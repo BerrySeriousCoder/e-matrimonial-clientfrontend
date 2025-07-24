@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: 'Georgia', 'Times New Roman', Times, serif;
+  --font-sans: 'Inter', 'Arial', sans-serif;
+  --color-paper: #f5f5e6;
+}
+
+body {
+  background-color: #ffffff;
+  background-image: url("https://www.transparenttextures.com/patterns/clean-gray-paper.png");
+  /* This is mostly intended for prototyping; please download the pattern and re-host for production environments. Thank you! */
+  background-size: auto;
+  background-repeat: repeat;
+  color: #222;
+  font-family: var(--font-serif);
+}
+
+html {
+  background-color: #ffffff;
+  background-image: url("https://www.transparenttextures.com/patterns/clean-gray-paper.png");
+  /* This is mostly intended for prototyping; please download the pattern and re-host for production environments. Thank you! */
+  background-size: auto;
+  background-repeat: repeat;
+}
+
+.ui-font {
+  font-family: var(--font-sans);
+}
+
+.newspaper-card {
+  background: #ffffff;
+  background-image: url("https://www.transparenttextures.com/patterns/clean-gray-paper.png");
+  /* This is mostly intended for prototyping; please download the pattern and re-host for production environments. Thank you! */
+  background-size: auto;
+  background-repeat: repeat;
+  border: 1px solid #cccccc;
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.section-header {
+  font-size: 1.125rem;
+  font-weight: bold;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
