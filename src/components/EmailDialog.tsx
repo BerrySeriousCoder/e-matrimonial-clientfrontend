@@ -36,8 +36,9 @@ export default function EmailDialog({ open, onClose, toEmail, lastMsg, setLastMs
       if (!data.success) throw new Error(data.message);
       setStep('otp');
       setInfo('OTP sent to your email. Please check and enter below.');
-    } catch (e: any) {
-      setError(e.message || 'Failed to send OTP');
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to send OTP';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -56,8 +57,9 @@ export default function EmailDialog({ open, onClose, toEmail, lastMsg, setLastMs
       setInfo('Email sent successfully!');
       setLastMsg(message);
       setTimeout(() => { onClose(); }, 1200);
-    } catch (e: any) {
-      setError(e.message || 'Failed to send email');
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to send email';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -74,7 +76,7 @@ export default function EmailDialog({ open, onClose, toEmail, lastMsg, setLastMs
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <Dialog.Panel className="bg-white rounded shadow-lg max-w-md w-full p-6 transition-all duration-500">
           <Dialog.Title className="text-xl font-bold mb-2 ui-font">{texts.sendEmail}</Dialog.Title>
-          <div className="text-sm text-gray-600 mb-4">Enter your email and message. We'll verify your email with an OTP before sending.</div>
+          <div className="text-sm text-gray-600 mb-4">Enter your email and message. We&apos;ll verify your email with an OTP before sending.</div>
           {step === 'form' && (
             <form onSubmit={e => { e.preventDefault(); handleRequestOtp(); }}>
               <label className="block mb-2">

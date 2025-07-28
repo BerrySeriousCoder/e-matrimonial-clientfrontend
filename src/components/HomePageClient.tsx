@@ -22,7 +22,13 @@ type Post = {
   bgColor?: string;
 };
 
-function usePosts(page: number, initialData: any, lookingFor?: string, search?: string) {
+type PostsData = {
+  posts: Post[];
+  totalPages: number;
+  currentPage: number;
+};
+
+function usePosts(page: number, initialData: PostsData | undefined, lookingFor?: string, search?: string) {
   return useQuery({
     queryKey: ['posts', page, lookingFor, search],
     queryFn: async () => {
@@ -43,7 +49,7 @@ function usePosts(page: number, initialData: any, lookingFor?: string, search?: 
   });
 }
 
-export default function HomePageClient({ initialData }: { initialData: any }) {
+export default function HomePageClient({ initialData }: { initialData: PostsData }) {
   const { texts } = useUITexts();
   const [filter, setFilter] = useState<'all' | 'selected' | 'bride' | 'groom'>('all');
   const [search, setSearch] = useState('');

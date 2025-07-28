@@ -51,8 +51,9 @@ export default function AuthDialog({ open, onClose, onAuth }: {
       if (!data.success) throw new Error(data.message);
       setStep('otp');
       setInfo('OTP sent to your email. Please check and enter below.');
-    } catch (e: any) {
-      setError(e.message || 'Failed to send OTP');
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to send OTP';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -70,8 +71,9 @@ export default function AuthDialog({ open, onClose, onAuth }: {
       if (!data.success) throw new Error(data.message);
       setInfo('Registration successful! You can now log in.');
       setTimeout(() => { setMode('login'); setStep('form'); setError(''); setInfo(''); }, 1200);
-    } catch (e: any) {
-      setError(e.message || 'Failed to register');
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to register';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -91,8 +93,9 @@ export default function AuthDialog({ open, onClose, onAuth }: {
       setInfo('Login successful!');
       onAuth(data.token);
       setTimeout(() => { closeDialog(); }, 800);
-    } catch (e: any) {
-      setError(e.message || 'Failed to login');
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to login';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -111,8 +114,9 @@ export default function AuthDialog({ open, onClose, onAuth }: {
       if (!data.success) throw new Error(data.message);
       setStep('otp');
       setInfo('Login OTP sent to your email. Please check and enter below.');
-    } catch (e: any) {
-      setError(e.message || 'Failed to send OTP');
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to send OTP';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -131,8 +135,9 @@ export default function AuthDialog({ open, onClose, onAuth }: {
       setInfo('Login successful!');
       onAuth(data.token);
       setTimeout(() => { closeDialog(); }, 800);
-    } catch (e: any) {
-      setError(e.message || 'Failed to login');
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to login';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -151,8 +156,9 @@ export default function AuthDialog({ open, onClose, onAuth }: {
       if (!data.success) throw new Error(data.message);
       setStep('otp');
       setInfo('OTP sent to your email. Please check and enter below.');
-    } catch (e: any) {
-      setError(e.message || 'Failed to send OTP');
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to send OTP';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -170,8 +176,9 @@ export default function AuthDialog({ open, onClose, onAuth }: {
       if (!data.success) throw new Error(data.message);
       setInfo('Password reset! You can now log in.');
       setTimeout(() => { setMode('login'); setStep('form'); setError(''); setInfo(''); }, 1200);
-    } catch (e: any) {
-      setError(e.message || 'Failed to reset password');
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to reset password';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
