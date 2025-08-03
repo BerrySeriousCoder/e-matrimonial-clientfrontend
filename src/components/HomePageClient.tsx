@@ -6,6 +6,7 @@ import Pagination from './Pagination';
 import PostAdDialog from './PostAdDialog';
 import EmailDialog from './EmailDialog';
 import AuthDialog from './AuthDialog';
+import SearchFilters from './SearchFilters';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUITexts } from '../hooks/useUITexts';
 import { useDebounce } from '../hooks/useDebounce';
@@ -28,9 +29,9 @@ type PostsData = {
   currentPage: number;
 };
 
-function usePosts(page: number, initialData: PostsData | undefined, lookingFor?: string, search?: string) {
+function usePosts(page: number, initialData: PostsData | undefined, lookingFor?: string, search?: string, filters?: number[]) {
   return useQuery({
-    queryKey: ['posts', page, lookingFor, search],
+    queryKey: ['posts', page, lookingFor, search, filters],
     queryFn: async () => {
       const url = new URL(`${API_URL}/posts`);
       url.searchParams.set('page', page.toString());
@@ -40,11 +41,14 @@ function usePosts(page: number, initialData: PostsData | undefined, lookingFor?:
       if (search && search.trim()) {
         url.searchParams.set('search', search.trim());
       }
+      if (filters && filters.length > 0) {
+        url.searchParams.set('filters', JSON.stringify(filters));
+      }
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error('Failed to fetch posts');
       return res.json();
     },
-    initialData: page === 1 && (lookingFor === 'all' || !lookingFor) && (!search || !search.trim()) ? initialData : undefined,
+    initialData: page === 1 && (lookingFor === 'all' || !lookingFor) && (!search || !search.trim()) && (!filters || filters.length === 0) ? initialData : undefined,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
@@ -53,8 +57,34 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
   const { texts } = useUITexts();
   const [filter, setFilter] = useState<'all' | 'selected' | 'bride' | 'groom'>('all');
   const [search, setSearch] = useState('');
+  const [selectedFilters, setSelectedFilters] = useState<number[]>([]);
   const debouncedSearch = useDebounce(search, 500); // 500ms delay
-  const [page, setPage] = useState(1);
+  
+  // Initialize page from URL params or localStorage, fallback to 1
+  const [page, setPage] = useState(() => {
+    if (typeof window !== 'undefined') {
+      // First try to get from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const pageParam = urlParams.get('page');
+      if (pageParam) {
+        const pageNum = parseInt(pageParam, 10);
+        if (!isNaN(pageNum) && pageNum > 0) {
+          return pageNum;
+        }
+      }
+      
+      // Fallback to localStorage
+      const savedPage = localStorage.getItem('currentPage');
+      if (savedPage) {
+        const pageNum = parseInt(savedPage, 10);
+        if (!isNaN(pageNum) && pageNum > 0) {
+          return pageNum;
+        }
+      }
+    }
+    return 1;
+  });
+  
   const [selected, setSelected] = useState<Post[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = sessionStorage.getItem('selectedAds');
@@ -64,7 +94,7 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
   });
   const [selectError, setSelectError] = useState('');
   const [showPostDialog, setShowPostDialog] = useState(false);
-  const [showEmailDialog, setShowEmailDialog] = useState<{ open: boolean; postId?: number }>({ open: false });
+  const [showEmailDialog, setShowEmailDialog] = useState<{ open: boolean; postId?: number; toEmail?: string }>({ open: false });
   const [lastEmailMsg, setLastEmailMsg] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('lastEmailMsg') || '';
@@ -78,10 +108,40 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
     }
     return null;
   });
+  const [userEmail, setUserEmail] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('userEmail');
+    }
+    return null;
+  });
   const [userSelected, setUserSelected] = useState<Post[]>([]);
   const queryClient = useQueryClient();
   const [hasMounted, setHasMounted] = useState(false);
   useEffect(() => { setHasMounted(true); }, []);
+
+  // Save page to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && page > 1) {
+      localStorage.setItem('currentPage', page.toString());
+    } else if (typeof window !== 'undefined' && page === 1) {
+      localStorage.removeItem('currentPage');
+    }
+  }, [page]);
+
+  // Update URL when page changes (but don't trigger navigation)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && hasMounted) {
+      const url = new URL(window.location.href);
+      if (page > 1) {
+        url.searchParams.set('page', page.toString());
+      } else {
+        url.searchParams.delete('page');
+      }
+      
+      // Update URL without triggering a page reload
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [page, hasMounted]);
 
   useEffect(() => {
     sessionStorage.setItem('selectedAds', JSON.stringify(selected));
@@ -130,12 +190,12 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
     }
   }, [jwt]);
 
-  // Reset page when search or filter changes
+  // Reset page when search, filter, or search filters change
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, filter]);
+  }, [debouncedSearch, filter, selectedFilters]);
 
-  const { data, isLoading, isError, refetch } = usePosts(page, initialData, filter === 'all' ? undefined : filter, debouncedSearch);
+  const { data, isLoading, isError, refetch } = usePosts(page, initialData, filter === 'all' ? undefined : filter, debouncedSearch, selectedFilters);
   const posts: Post[] = data?.posts || [];
   const totalPages = data?.totalPages || 1;
 
@@ -217,22 +277,32 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
         search={search}
         setSearch={setSearch}
         isSearching={search !== debouncedSearch}
+        selectedFilters={selectedFilters}
+        onFiltersChange={setSelectedFilters}
+        page={page}
         right={
           !hasMounted ? null : (
             jwt ? (
-              <button
-                className="ui-font bg-gray-200 text-black px-3 py-1 rounded ml-4"
-                onClick={() => {
-                  setJwt(null);
-                  localStorage.removeItem('jwt');
-                  setUserSelected([]);
-                }}
-              >
-                {texts.logout}
-              </button>
+              <div className="flex items-center gap-3">
+                <span className="font-serif text-sm text-gray-700 font-medium">
+                  Welcome, {userEmail}
+                </span>
+                <button
+                  className="px-4 py-2 bg-transparent text-black font-medium hover:bg-gray-100/50 transition-colors text-sm"
+                  onClick={() => {
+                    setJwt(null);
+                    setUserEmail(null);
+                    localStorage.removeItem('jwt');
+                    localStorage.removeItem('userEmail');
+                    setUserSelected([]);
+                  }}
+                >
+                  {texts.logout}
+                </button>
+              </div>
             ) : (
               <button
-                className="ui-font bg-black text-white px-3 py-1 rounded ml-4"
+                className="px-4 py-2 bg-transparent text-black font-medium hover:bg-gray-100/50 transition-colors text-sm"
                 onClick={() => setAuthDialogOpen(true)}
               >
                 {texts.login}
@@ -242,22 +312,22 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
         }
       />
       {selectError && (
-        <div className="text-center text-red-600 mb-2 ui-font">{selectError}</div>
+        <div className="text-center text-red-600 mb-4 font-serif font-bold">{selectError}</div>
       )}
       {isLoading ? (
-        <div className="text-center py-12 text-lg">Loading ads...</div>
+        <div className="text-center py-12 text-lg font-serif">Loading matrimonial advertisements...</div>
       ) : isError ? (
-        <div className="text-center py-12 text-red-600">Failed to load ads.</div>
+        <div className="text-center py-12 text-red-600 font-serif">Failed to load advertisements.</div>
       ) : (
-        <div className="columns-1 md:columns-2 lg:columns-4 gap-4">
+        <div className="columns-1 md:columns-2 lg:columns-5 gap-0 newspaper-masonry">
           {showPosts
             .map((post: Post) => (
-              <div key={post.id} className="mb-4 break-inside-avoid">
+              <div key={post.id} className="break-inside-avoid mb-0">
                 <NewspaperCard
                   content={post.content}
                   selected={isSelected(post.id)}
                   onSelect={() => handleSelect(post)}
-                  onEmail={() => setShowEmailDialog({ open: true, postId: post.id })}
+                  onEmail={() => setShowEmailDialog({ open: true, postId: post.id, toEmail: post.email })}
                   fontSize={post.fontSize}
                   bgColor={post.bgColor}
                 />
@@ -269,14 +339,14 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
         <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       )}
       {showPagination && (
-        <div className="text-center text-xs text-gray-500 mt-4">
+        <div className="text-center text-xs text-gray-600 mt-6 font-serif italic">
           Page {page} of {totalPages} | Showing matrimonial advertisements
           {filter === 'bride' && ' (Looking for Bride)'}
           {filter === 'groom' && ' (Looking for Groom)'}
         </div>
       )}
       {filter === 'selected' && (
-        <div className="text-center text-xs text-gray-500 mt-4">
+        <div className="text-center text-xs text-gray-600 mt-6 font-serif italic">
           Showing {selectedPosts.length} selected profile{selectedPosts.length !== 1 ? 's' : ''}
         </div>
       )}
@@ -284,20 +354,29 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
         open={showPostDialog}
         onClose={() => setShowPostDialog(false)}
         onSuccess={() => refetch()}
+        isAuthenticated={!!jwt}
+        userEmail={userEmail || ''}
+        jwt={jwt || ''}
       />
       <EmailDialog
         open={showEmailDialog.open}
         onClose={() => setShowEmailDialog({ open: false })}
-        toEmail={getEmailForPost(showEmailDialog.postId)}
+        toEmail={showEmailDialog.toEmail || ''}
         lastMsg={lastEmailMsg}
         setLastMsg={setLastEmailMsg}
+        isAuthenticated={!!jwt}
+        userEmail={userEmail || ''}
+        jwt={jwt || ''}
+        postId={showEmailDialog.postId}
       />
       <AuthDialog
         open={authDialogOpen}
         onClose={() => setAuthDialogOpen(false)}
-        onAuth={token => {
+        onAuth={(token, email) => {
           setJwt(token);
+          setUserEmail(email);
           localStorage.setItem('jwt', token);
+          localStorage.setItem('userEmail', email);
           setAuthDialogOpen(false);
         }}
       />

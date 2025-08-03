@@ -28,28 +28,27 @@ export default function NewspaperCard({
 
   const cardStyle = {
     backgroundColor: bgColor,
-    backgroundImage: bgColor === '#ffffff' 
-      ? 'url("https://www.transparenttextures.com/patterns/clean-gray-paper.png")'
-      : 'none',
+    backgroundImage: 'url("https://www.transparenttextures.com/patterns/clean-gray-paper.png")',
+    backgroundBlendMode: 'multiply',
   };
 
   return (
     <div 
-      className="newspaper-card flex flex-col justify-between min-h-[180px]"
+      className="bg-white border-b border-red-800 p-3 transition-colors duration-200 relative h-full flex flex-col justify-between"
       style={cardStyle}
     >
-      <div className={`whitespace-pre-line mb-4 leading-relaxed ${getFontSizeClass()}`}>
+      <div className={`font-serif leading-relaxed text-justify hyphens-auto tracking-wide mb-4 ${getFontSizeClass()}`}>
         {content}
       </div>
-      <div className="flex items-center justify-between mt-auto">
+      <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-200">
         <button
-          className={`ui-font px-3 py-1 rounded border text-sm font-medium transition ${selected ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-800 border-gray-400 hover:bg-gray-100'}`}
+          className={`newspaper-btn text-sm ${selected ? 'newspaper-btn-primary' : 'newspaper-btn-secondary'}`}
           onClick={onSelect}
         >
           {selected ? texts.unselect : texts.select}
         </button>
         <button
-          className="ui-font px-3 py-1 rounded border border-blue-600 text-blue-700 bg-white hover:bg-blue-50 text-sm font-medium transition"
+          className="newspaper-btn newspaper-btn-secondary text-sm border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
           onClick={onEmail}
         >
           {texts.email}
