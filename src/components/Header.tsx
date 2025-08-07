@@ -73,13 +73,14 @@ export default function Header({
             </button>
             {/* Search Bar */}
             <div className="relative">
-              <MagnifyingGlassIcon className={`h-5 w-5 absolute left-4 top-1/2 transform -translate-y-1/2 ${isSearching ? 'text-red-600 animate-pulse' : 'text-gray-500'}`} />
+              <MagnifyingGlassIcon className={`h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none ${isSearching ? 'text-red-600 animate-pulse' : 'text-gray-500'}`} />
               <input
                 type="text"
                 placeholder="Search by email or content..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="newspaper-search pl-12 pr-4 w-80"
+                className="w-80 bg-white border-2 border-gray-300 rounded-none py-3 px-4 pl-12 font-serif text-base focus:outline-none focus:border-red-800 focus:shadow-[0_0_0_3px_rgba(139,0,0,0.1)]"
+                style={{ fontFamily: 'var(--font-serif)' }}
               />
               {isSearching && (
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
