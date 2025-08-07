@@ -202,12 +202,18 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
   useEffect(() => {
     if (page < totalPages && filter === 'all' && (!debouncedSearch || !debouncedSearch.trim())) {
       queryClient.prefetchQuery({
-        queryKey: ['posts', page + 1, undefined, debouncedSearch],
+        queryKey: ['posts', page + 1, filter === 'all' ? undefined : filter, debouncedSearch, selectedFilters],
         queryFn: async () => {
           const url = new URL(`${API_URL}/posts`);
           url.searchParams.set('page', (page + 1).toString());
+          if (filter !== 'all') {
+            url.searchParams.set('lookingFor', filter);
+          }
           if (debouncedSearch && debouncedSearch.trim()) {
             url.searchParams.set('search', debouncedSearch.trim());
+          }
+          if (selectedFilters && selectedFilters.length > 0) {
+            url.searchParams.set('filters', JSON.stringify(selectedFilters));
           }
           const res = await fetch(url.toString());
           if (!res.ok) throw new Error('Failed to fetch posts');
@@ -216,7 +222,7 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
         staleTime: 5 * 60 * 1000,
       });
     }
-  }, [page, totalPages, queryClient, filter, debouncedSearch]);
+  }, [page, totalPages, queryClient, filter, debouncedSearch, selectedFilters]);
 
   // Helper to determine selected state
   const isSelected = (id: number) => {
