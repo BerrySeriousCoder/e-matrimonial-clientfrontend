@@ -199,66 +199,22 @@ html {
 }
 
 @media (min-width: 1024px) {
-  .newspaper-masonry { column-gap: 1.5rem; }
+  .newspaper-masonry { 
+    column-gap: 1.5rem; 
+    /* 4 vertical separators for 5 columns at 20/40/60/80% */
+    background-image:
+      linear-gradient(to bottom, #d1d5db, #d1d5db),
+      linear-gradient(to bottom, #d1d5db, #d1d5db),
+      linear-gradient(to bottom, #d1d5db, #d1d5db),
+      linear-gradient(to bottom, #d1d5db, #d1d5db);
+    background-repeat: no-repeat;
+    background-size: 1px 100%;
+    background-position: 20% 0, 40% 0, 60% 0, 80% 0;
+  }
 }
 
-.newspaper-masonry::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 20%;
-  width: 0.5px;
-  height: 100%;
-  background-color: #d1d5db;
-  z-index: 10;
-}
-
-.newspaper-masonry::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 40%;
-  width: 0.5px;
-  height: 100%;
-  background-color: #d1d5db;
-  z-index: 10;
-}
-
-.newspaper-masonry .separator-3 {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 60%;
-  width: 0.5px;
-  height: 100%;
-  background-color: #d1d5db;
-  z-index: 10;
-}
-
-.newspaper-masonry .separator-4 {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 80%;
-  width: 0.5px;
-  height: 100%;
-  background-color: #d1d5db;
-  z-index: 10;
-}
-
-/* Hide separators on smaller screens */
 @media (max-width: 1024px) {
-  .newspaper-masonry::after,
-  .newspaper-masonry .separator-3,
-  .newspaper-masonry .separator-4 {
-    display: none;
-  }
-}
-
-@media (max-width: 768px) {
-  .newspaper-masonry::before {
-    display: none;
-  }
+  .newspaper-masonry { background-image: none; }
 }
 
 /* Responsive Design */
