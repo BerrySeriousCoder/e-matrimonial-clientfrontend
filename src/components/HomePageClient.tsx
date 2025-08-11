@@ -328,10 +328,10 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
       ) : isError ? (
         <div className="text-center py-12 text-red-600 font-serif">Failed to load advertisements.</div>
       ) : (
-        <div className="columns-1 md:columns-2 lg:columns-5 gap-0 newspaper-masonry">
+        <div className="columns-1 md:columns-2 lg:columns-5 gap-0 newspaper-masonry pt-2">
           {showPosts
             .map((post: Post) => (
-              <div key={post.id} className="break-inside-avoid mb-0">
+              <div key={post.id} className="break-inside-avoid mb-4">
                 <NewspaperCard
                   content={post.content}
                   selected={isSelected(post.id)}
