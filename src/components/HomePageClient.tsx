@@ -35,7 +35,7 @@ function usePosts(page: number, initialData: PostsData | undefined, lookingFor?:
     queryFn: async () => {
       const url = new URL(`${API_URL}/posts`);
       url.searchParams.set('page', page.toString());
-      if (lookingFor && lookingFor !== 'all' && lookingFor !== 'selected') {
+      if (lookingFor) {
         url.searchParams.set('lookingFor', lookingFor);
       }
       if (search && search.trim()) {
@@ -48,14 +48,17 @@ function usePosts(page: number, initialData: PostsData | undefined, lookingFor?:
       if (!res.ok) throw new Error('Failed to fetch posts');
       return res.json();
     },
-    initialData: page === 1 && (lookingFor === 'all' || !lookingFor) && (!search || !search.trim()) && (!filters || filters.length === 0) ? initialData : undefined,
+    initialData: page === 1 && lookingFor === 'groom' && (!search || !search.trim()) && (!filters || filters.length === 0) ? initialData : undefined,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
 export default function HomePageClient({ initialData }: { initialData: PostsData }) {
   const { texts } = useUITexts();
-  const [filter, setFilter] = useState<'all' | 'selected' | 'bride' | 'groom'>('all');
+  const [filter, setFilter] = useState<'selected' | 'bride' | 'groom'>(() => {
+    // Coerce any legacy persisted 'all' value to 'groom'
+    return 'groom';
+  });
   const [search, setSearch] = useState('');
   const [selectedFilters, setSelectedFilters] = useState<number[]>([]);
   const debouncedSearch = useDebounce(search, 500); // 500ms delay
@@ -195,18 +198,18 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
     setPage(1);
   }, [debouncedSearch, filter, selectedFilters]);
 
-  const { data, isLoading, isError, refetch } = usePosts(page, initialData, filter === 'all' ? undefined : filter, debouncedSearch, selectedFilters);
+  const { data, isLoading, isError, refetch } = usePosts(page, initialData, filter === 'selected' ? undefined : filter, debouncedSearch, selectedFilters);
   const posts: Post[] = data?.posts || [];
   const totalPages = data?.totalPages || 1;
 
   useEffect(() => {
-    if (page < totalPages && filter === 'all' && (!debouncedSearch || !debouncedSearch.trim())) {
+    if (page < totalPages && (!debouncedSearch || !debouncedSearch.trim())) {
       queryClient.prefetchQuery({
-        queryKey: ['posts', page + 1, filter === 'all' ? undefined : filter, debouncedSearch, selectedFilters],
+        queryKey: ['posts', page + 1, filter === 'selected' ? undefined : filter, debouncedSearch, selectedFilters],
         queryFn: async () => {
           const url = new URL(`${API_URL}/posts`);
           url.searchParams.set('page', (page + 1).toString());
-          if (filter !== 'all') {
+          if (filter !== 'selected') {
             url.searchParams.set('lookingFor', filter);
           }
           if (debouncedSearch && debouncedSearch.trim()) {
@@ -271,7 +274,7 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
 
   // Show all selected posts at once in 'selected' mode
   const selectedPosts = jwt ? userSelected : selected;
-  const showPagination = filter === 'all' || filter === 'bride' || filter === 'groom';
+  const showPagination = filter === 'bride' || filter === 'groom';
   const showPosts = filter === 'selected' ? selectedPosts : posts;
 
   return (
@@ -347,8 +350,8 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
       {showPagination && (
         <div className="text-center text-xs text-gray-600 mt-6 font-serif italic">
           Page {page} of {totalPages} | Showing matrimonial advertisements
-          {filter === 'bride' && ' (Looking for Bride)'}
-          {filter === 'groom' && ' (Looking for Groom)'}
+          {filter === 'bride' && ` (${texts.filterBride})`}
+          {filter === 'groom' && ` (${texts.filterGroom})`}
         </div>
       )}
       {filter === 'selected' && (

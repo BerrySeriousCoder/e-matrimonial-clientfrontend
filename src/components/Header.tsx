@@ -16,8 +16,8 @@ export default function Header({
   page = 1,
 }: {
   onPostAd: () => void;
-  filter: 'all' | 'selected' | 'bride' | 'groom';
-  setFilter: (f: 'all' | 'selected' | 'bride' | 'groom') => void;
+  filter: 'selected' | 'bride' | 'groom';
+  setFilter: (f: 'selected' | 'bride' | 'groom') => void;
   search: string;
   setSearch: (s: string) => void;
   isSearching?: boolean;
@@ -102,10 +102,9 @@ export default function Header({
               <select
                 id="profile-filter"
                 value={filter}
-                onChange={e => setFilter(e.target.value as 'all' | 'selected' | 'bride' | 'groom')}
+                onChange={e => setFilter(e.target.value as 'selected' | 'bride' | 'groom')}
                 className="newspaper-search px-3 py-2"
               >
-                <option value="all">{texts.filterAll}</option>
                 <option value="bride">{texts.filterBride}</option>
                 <option value="groom">{texts.filterGroom}</option>
                 <option value="selected">{texts.filterSelected}</option>
