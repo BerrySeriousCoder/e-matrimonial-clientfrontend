@@ -1,5 +1,7 @@
 import React from 'react';
 import { useUITexts } from '../hooks/useUITexts';
+import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid';
+import { HeartIcon as HeartOutline } from '@heroicons/react/24/outline';
 
 export default function NewspaperCard({
   content,
@@ -42,10 +44,16 @@ export default function NewspaperCard({
       </div>
       <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-200">
         <button
-          className={`newspaper-btn text-sm ${selected ? 'newspaper-btn-primary' : 'newspaper-btn-secondary'}`}
+          aria-pressed={selected}
+          className={`newspaper-btn text-sm flex items-center gap-2 border-2 border-red-600 ${selected ? 'bg-red-600 text-white hover:bg-red-700' : 'text-red-600 hover:bg-red-600 hover:text-white'}`}
           onClick={onSelect}
         >
-          {selected ? texts.unselect : texts.select}
+          {selected ? (
+            <HeartSolid className="h-4 w-4" />
+          ) : (
+            <HeartOutline className="h-4 w-4" />
+          )}
+          <span>{texts.select}</span>
         </button>
         <button
           className="newspaper-btn newspaper-btn-secondary text-sm border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
