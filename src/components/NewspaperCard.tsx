@@ -1,7 +1,5 @@
 import React from 'react';
 import { useUITexts } from '../hooks/useUITexts';
-import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid';
-import { HeartIcon as HeartOutline } from '@heroicons/react/24/outline';
 
 export default function NewspaperCard({
   content,
@@ -22,9 +20,9 @@ export default function NewspaperCard({
 
   const getFontSizeClass = () => {
     switch (fontSize) {
-      case 'medium': return 'text-[1.15rem]';
-      case 'large': return 'text-[1.25rem]';
-      default: return 'text-[1.05rem]';
+      case 'medium': return 'text-sm sm:text-[1.15rem]';
+      case 'large': return 'text-sm sm:text-[1.25rem]';
+      default: return 'text-sm sm:text-[1.05rem]';
     }
   };
 
@@ -36,27 +34,21 @@ export default function NewspaperCard({
 
   return (
     <div 
-      className="bg-white border-b border-red-800 p-3 transition-colors duration-200 relative h-full flex flex-col justify-between"
+      className="newspaper-card bg-white border-b border-red-800 p-2 sm:p-3 transition-colors duration-200 relative h-full flex flex-col justify-between"
       style={cardStyle}
     >
-      <div className={`font-serif leading-relaxed text-justify hyphens-auto tracking-wide mb-4 ${getFontSizeClass()}`}>
+      <div className={`font-serif leading-relaxed text-justify hyphens-auto tracking-wide mb-3 sm:mb-4 ${getFontSizeClass()} break-words overflow-wrap-anywhere`}>
         {content}
       </div>
-      <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-200">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-0 mt-auto pt-2 sm:pt-3 border-t border-gray-200">
         <button
-          aria-pressed={selected}
-          className={`newspaper-btn text-sm flex items-center gap-2 border-2 border-red-600 ${selected ? 'bg-red-600 text-white hover:bg-red-700' : 'text-red-600 hover:bg-red-600 hover:text-white'}`}
+          className={`newspaper-btn text-xs sm:text-sm flex-1 sm:flex-none ${selected ? 'newspaper-btn-primary' : 'newspaper-btn-secondary'}`}
           onClick={onSelect}
         >
-          {selected ? (
-            <HeartSolid className="h-4 w-4" />
-          ) : (
-            <HeartOutline className="h-4 w-4" />
-          )}
-          <span>{texts.select}</span>
+          {selected ? texts.unselect : texts.select}
         </button>
         <button
-          className="newspaper-btn newspaper-btn-secondary text-sm border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
+          className="newspaper-btn newspaper-btn-secondary text-xs sm:text-sm border-red-600 text-red-600 hover:bg-red-600 hover:text-white flex-1 sm:flex-none"
           onClick={onEmail}
         >
           {texts.email}

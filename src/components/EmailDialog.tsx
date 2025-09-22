@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog } from '@headlessui/react';
 import { useUITexts } from '../hooks/useUITexts';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api`;
@@ -27,7 +26,8 @@ export default function EmailDialog({
   isAuthenticated = false,
   userEmail = '',
   jwt = '',
-  postId
+  postId,
+  onOpenAuthDialog
 }: {
   open: boolean;
   onClose: () => void;
@@ -38,6 +38,7 @@ export default function EmailDialog({
   userEmail?: string;
   jwt?: string;
   postId?: number;
+  onOpenAuthDialog?: () => void;
 }) {
   const { texts } = useUITexts();
   const [step, setStep] = useState<'form' | 'otp'>('form');
@@ -168,65 +169,83 @@ export default function EmailDialog({
   };
 
   return (
-    <Dialog open={open} onClose={closeDialog} className="relative z-50">
-      <div className="fixed inset-0 bg-black/50 transition-opacity duration-500" aria-hidden="true" />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="bg-white border border-gray-300 shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden">
-          {/* Header - Newspaper Style */}
-          <div className="bg-gray-900 text-white px-6 py-4 border-b-4 border-amber-700">
+    <>
+      {/* Backdrop */}
+      <div 
+        className={`fixed inset-0 z-40 transition-opacity duration-300 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} 
+        onClick={closeDialog}
+      />
+
+      {/* Right-side sheet */}
+      <aside
+        className={`fixed right-0 top-0 h-full z-50 w-full sm:w-[560px] max-w-[98vw] border-l border-gray-400 transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        style={{ 
+          backgroundImage: 'url("https://www.transparenttextures.com/patterns/clean-gray-paper.png")',
+          backgroundSize: 'auto',
+          backgroundRepeat: 'repeat',
+          backgroundColor: 'var(--color-newsprint)'
+        }}
+      >
+        <div className="h-full flex flex-col">
+          {/* Header */}
+          <div className="px-5 py-4 border-b border-gray-800">
             <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-amber-700 rounded flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold tracking-wide uppercase">{texts.sendEmail}</h3>
-                  <p className="text-xs text-gray-300 uppercase tracking-wider">Send message to advertiser</p>
-                </div>
+              <div>
+                <h3 className="text-base font-bold uppercase tracking-wide" style={{ color: 'var(--color-headline)', fontFamily: 'var(--font-serif)' }}>{texts.sendEmail}</h3>
+                <p className="text-xs" style={{ color: '#4b5563' }}>Send message to advertiser</p>
               </div>
               <button
                 onClick={closeDialog}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="px-3 py-1 text-xs border border-gray-500 hover:bg-gray-200 transition-colors"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                Close
               </button>
             </div>
           </div>
 
           {/* Content */}
-          <div className="p-6 max-h-[500px] overflow-y-auto bg-gray-50">
+          <div className="flex-1 overflow-y-auto p-5">
             {/* Status Info */}
             {isAuthenticated ? (
-              <div className="bg-green-50 border border-green-200 text-green-800 p-4 mb-6 rounded">
-                <div className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="font-medium">You&apos;re logged in as <strong>{userEmail}</strong>. You can send emails directly without OTP verification.</span>
+              <div className="border border-gray-800 mb-6">
+                <div className="px-4 py-3 border-b border-gray-800">
+                  <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>Authentication Status</h4>
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="font-medium text-gray-900">You&apos;re logged in as <strong>{userEmail}</strong>. You can send emails directly without OTP verification.</span>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 mb-6 rounded">
-                <div className="flex items-start space-x-2">
-                  <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div>
-                    <p className="font-medium">Enter your email and message. We&apos;ll verify your email with an OTP before sending.</p>
-                    <p className="text-sm mt-1">
-                      💡 Want to skip OTP verification? 
-                      <button 
-                        onClick={() => window.location.href = '/#login'} 
-                        className="text-blue-600 hover:text-blue-800 underline ml-1"
-                      >
-                        Login here
-                      </button> 
-                      for a faster experience!
-                    </p>
+              <div className="border border-gray-800 mb-6">
+                <div className="px-4 py-3 border-b border-gray-800">
+                  <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>Instructions</h4>
+                </div>
+                <div className="p-4">
+                  <div className="flex items-start space-x-2">
+                    <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="font-medium text-gray-900">Enter your email and message. We&apos;ll verify your email with an OTP before sending.</p>
+                      <p className="text-sm mt-1 text-gray-700">
+                        💡 Want to skip OTP verification? 
+                        <button 
+                          onClick={() => {
+                            onOpenAuthDialog?.();
+                            onClose();
+                          }} 
+                          className="text-blue-600 hover:text-blue-800 underline ml-1"
+                        >
+                          Login here
+                        </button> 
+                        for a faster experience!
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -234,49 +253,49 @@ export default function EmailDialog({
 
             {isAuthenticated ? (
               // Authenticated user flow - direct email sending
-              <div className="bg-white border border-gray-300 shadow-sm">
-                <div className="bg-gray-100 border-b border-gray-300 px-4 py-3">
-                  <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide">Email Details</h4>
+              <div className="border border-gray-800">
+                <div className="px-4 py-3 border-b border-gray-800">
+                  <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>Email Details</h4>
                 </div>
                 <div className="p-4">
                   <form onSubmit={e => { e.preventDefault(); handleAuthenticatedSubmit(); }}>
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                        <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-gray-900">
                           {texts.yourEmail}
                         </label>
                         <input 
                           type="email" 
                           value={fromEmail} 
                           disabled 
-                          className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-600" 
+                          className="w-full px-3 py-2 border border-gray-300 bg-gray-100 text-gray-600" 
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                        <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-gray-900">
                           {texts.receiverEmail}
                         </label>
                         <input 
                           type="email" 
                           value={toEmail} 
                           disabled 
-                          className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-600" 
+                          className="w-full px-3 py-2 border border-gray-300 bg-gray-100 text-gray-600" 
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                        <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-gray-900">
                           {texts.message}
                         </label>
                         <textarea 
                           required 
                           value={message} 
                           onChange={e => setMessage(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600 min-h-[120px] resize-vertical" 
+                          className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black min-h-[120px] resize-vertical text-gray-900" 
                           placeholder={texts.messagePlaceholder} 
                         />
                       </div>
-                      {error && <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded">{error}</div>}
-                      {info && <div className="p-3 bg-green-50 border border-green-200 text-green-800 text-sm rounded">{info}</div>}
+                      {error && <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm">{error}</div>}
+                      {info && <div className="p-3 bg-green-50 border border-green-200 text-green-800 text-sm">{info}</div>}
                     </div>
                   </form>
                 </div>
@@ -285,15 +304,15 @@ export default function EmailDialog({
               // Anonymous user flow - OTP verification
               <>
                 {step === 'form' && (
-                  <div className="bg-white border border-gray-300 shadow-sm">
-                    <div className="bg-gray-100 border-b border-gray-300 px-4 py-3">
-                      <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide">Email Details</h4>
+                  <div className="border border-gray-800">
+                    <div className="px-4 py-3 border-b border-gray-800">
+                      <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>Email Details</h4>
                     </div>
                     <div className="p-4">
                       <form onSubmit={e => { e.preventDefault(); handleRequestOtp(); }}>
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                            <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-gray-900">
                               {texts.yourEmail}
                             </label>
                             <input 
@@ -301,51 +320,51 @@ export default function EmailDialog({
                               required 
                               value={fromEmail} 
                               onChange={e => setFromEmail(e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600" 
+                              className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-gray-900" 
                               placeholder={texts.emailPlaceholder} 
                               autoFocus 
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                            <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-gray-900">
                               {texts.receiverEmail}
                             </label>
                             <input 
                               type="email" 
                               value={toEmail} 
                               disabled 
-                              className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-600" 
+                              className="w-full px-3 py-2 border border-gray-300 bg-gray-100 text-gray-600" 
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                            <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-gray-900">
                               {texts.message}
                             </label>
                             <textarea 
                               required 
                               value={message} 
                               onChange={e => setMessage(e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600 min-h-[120px] resize-vertical" 
+                              className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black min-h-[120px] resize-vertical text-gray-900" 
                               placeholder={texts.messagePlaceholder} 
                             />
                           </div>
-                          {error && <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded">{error}</div>}
-                          {info && <div className="p-3 bg-green-50 border border-green-200 text-green-800 text-sm rounded">{info}</div>}
+                          {error && <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm">{error}</div>}
+                          {info && <div className="p-3 bg-green-50 border border-green-200 text-green-800 text-sm">{info}</div>}
                         </div>
                       </form>
                     </div>
                   </div>
                 )}
                 {step === 'otp' && (
-                  <div className="bg-white border border-gray-300 shadow-sm">
-                    <div className="bg-gray-100 border-b border-gray-300 px-4 py-3">
-                      <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide">Verify OTP</h4>
+                  <div className="border border-gray-800">
+                    <div className="px-4 py-3 border-b border-gray-800">
+                      <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>Verify OTP</h4>
                     </div>
                     <div className="p-4">
                       <form onSubmit={e => { e.preventDefault(); handleAnonymousSubmit(); }}>
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
+                            <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-gray-900">
                               {texts.otpPlaceholder}
                             </label>
                             <input 
@@ -353,13 +372,13 @@ export default function EmailDialog({
                               required 
                               value={otp} 
                               onChange={e => setOtp(e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600" 
+                              className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black text-gray-900" 
                               placeholder={texts.otpPlaceholder} 
                               autoFocus 
                             />
                           </div>
-                          {error && <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded">{error}</div>}
-                          {info && <div className="p-3 bg-green-50 border border-green-200 text-green-800 text-sm rounded">{info}</div>}
+                          {error && <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm">{error}</div>}
+                          {info && <div className="p-3 bg-green-50 border border-green-200 text-green-800 text-sm">{info}</div>}
                         </div>
                       </form>
                     </div>
@@ -369,12 +388,12 @@ export default function EmailDialog({
             )}
           </div>
 
-          {/* Footer Actions - Newspaper Footer */}
-          <div className="bg-gray-100 px-6 py-4 border-t border-gray-300">
-            <div className="flex justify-end space-x-3">
+          {/* Footer actions */}
+          <div className="px-5 py-4 border-t border-gray-300 bg-white/60">
+            <div className="flex justify-end gap-3">
               <button
                 onClick={closeDialog}
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium rounded border border-gray-300 hover:bg-gray-200 transition-colors text-sm"
+                className="px-4 py-2 text-sm border border-gray-500 hover:bg-gray-200 transition-colors"
               >
                 {texts.cancel}
               </button>
@@ -382,7 +401,8 @@ export default function EmailDialog({
                 <button 
                   onClick={handleAuthenticatedSubmit}
                   disabled={loading}
-                  className="px-4 py-2 bg-amber-700 text-white rounded hover:bg-amber-800 font-semibold transition-colors text-sm shadow-sm disabled:opacity-50"
+                  className="px-4 py-2 text-sm border border-black text-white"
+                  style={{ backgroundColor: 'var(--color-ink)' }}
                 >
                   {loading ? 'Sending Email...' : texts.sendEmail}
                 </button>
@@ -392,7 +412,8 @@ export default function EmailDialog({
                     <button 
                       onClick={handleRequestOtp}
                       disabled={loading}
-                      className="px-4 py-2 bg-amber-700 text-white rounded hover:bg-amber-800 font-semibold transition-colors text-sm shadow-sm disabled:opacity-50"
+                      className="px-4 py-2 text-sm border border-black text-white"
+                      style={{ backgroundColor: 'var(--color-ink)' }}
                     >
                       {loading ? 'Sending OTP...' : texts.requestOtp}
                     </button>
@@ -401,7 +422,8 @@ export default function EmailDialog({
                     <button 
                       onClick={handleAnonymousSubmit}
                       disabled={loading}
-                      className="px-4 py-2 bg-amber-700 text-white rounded hover:bg-amber-800 font-semibold transition-colors text-sm shadow-sm disabled:opacity-50"
+                      className="px-4 py-2 text-sm border border-black text-white"
+                      style={{ backgroundColor: 'var(--color-ink)' }}
                     >
                       {loading ? 'Sending Email...' : texts.sendEmail}
                     </button>
@@ -410,8 +432,8 @@ export default function EmailDialog({
               )}
             </div>
           </div>
-        </Dialog.Panel>
-      </div>
-    </Dialog>
+        </div>
+      </aside>
+    </>
   );
 } 

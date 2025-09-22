@@ -50,35 +50,37 @@ export default function Pagination({
   const visiblePages = getVisiblePages();
 
   return (
-    <nav className="flex items-center justify-center gap-2 mt-8 mb-4 flex-wrap">
+    <nav className="flex items-center justify-center gap-1 sm:gap-2 mt-6 sm:mt-8 mb-4 flex-wrap px-2 sm:px-4">
       {/* First Page Button */}
       <button
-        className="newspaper-btn newspaper-btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+        className="newspaper-btn newspaper-btn-secondary disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2"
         onClick={() => onPageChange(1)}
         disabled={page === 1}
         title="Go to first page"
       >
-        &laquo; First
+        <span className="hidden sm:inline">&laquo; First</span>
+        <span className="sm:hidden">First</span>
       </button>
 
       {/* Previous Button */}
       <button
-        className="newspaper-btn newspaper-btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+        className="newspaper-btn newspaper-btn-secondary disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2"
         onClick={() => onPageChange(page - 1)}
         disabled={page === 1}
         title="Previous page"
       >
-        &lt; Prev
+        <span className="hidden sm:inline">&lt; Prev</span>
+        <span className="sm:hidden">Prev</span>
       </button>
 
       {/* Page Numbers */}
       {visiblePages.map((pageNum, index) => (
         <React.Fragment key={index}>
           {pageNum === '...' ? (
-            <span className="px-3 py-2 text-gray-500 font-serif text-sm">...</span>
+            <span className="px-2 sm:px-3 py-1 sm:py-2 text-gray-500 font-serif text-xs sm:text-sm">...</span>
           ) : (
             <button
-              className={`newspaper-btn ${
+              className={`newspaper-btn text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2 ${
                 page === pageNum 
                   ? 'newspaper-btn-primary' 
                   : 'newspaper-btn-secondary'
@@ -94,22 +96,24 @@ export default function Pagination({
 
       {/* Next Button */}
       <button
-        className="newspaper-btn newspaper-btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+        className="newspaper-btn newspaper-btn-secondary disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2"
         onClick={() => onPageChange(page + 1)}
         disabled={page === totalPages}
         title="Next page"
       >
-        Next &gt;
+        <span className="hidden sm:inline">Next &gt;</span>
+        <span className="sm:hidden">Next</span>
       </button>
 
       {/* Last Page Button */}
       <button
-        className="newspaper-btn newspaper-btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+        className="newspaper-btn newspaper-btn-secondary disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-2"
         onClick={() => onPageChange(totalPages)}
         disabled={page === totalPages}
         title="Go to last page"
       >
-        Last &raquo;
+        <span className="hidden sm:inline">Last &raquo;</span>
+        <span className="sm:hidden">Last</span>
       </button>
     </nav>
   );

@@ -27,12 +27,14 @@ const defaultTexts = {
   otpPlaceholder: 'Enter 6-digit OTP',
   password: 'Password',
   passwordPlaceholder: 'Enter your password',
-  confirmPassword: 'Confirm Password',
-  confirmPasswordPlaceholder: 'Confirm your password',
+  newPassword: 'New Password',
+  newPasswordPlaceholder: 'Enter your new password',
+  confirmNewPassword: 'Confirm New Password',
+  confirmNewPasswordPlaceholder: 'Re-enter your new password',
   filterAll: 'All',
   filterSelected: 'Selected',
-  filterBride: 'Looking for Bride',
-  filterGroom: 'Looking for Groom',
+  filterBride: 'I am looking for bride',
+  filterGroom: 'I am looking for groom',
 };
 
 // Fetch UI texts from API

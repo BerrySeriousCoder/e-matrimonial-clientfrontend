@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Header from './Header';
 import NewspaperCard from './NewspaperCard';
 import Pagination from './Pagination';
@@ -7,9 +7,12 @@ import PostAdDialog from './PostAdDialog';
 import EmailDialog from './EmailDialog';
 import AuthDialog from './AuthDialog';
 import SearchFilters from './SearchFilters';
+import LoginButtonAlert from './LoginButtonAlert';
+import ProfileCardAlert from './ProfileCardAlert';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUITexts } from '../hooks/useUITexts';
 import { useDebounce } from '../hooks/useDebounce';
+import { useFluidResponsive } from '../hooks/useFluidResponsive';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 
@@ -69,22 +72,27 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
       // First try to get from URL parameters
       const urlParams = new URLSearchParams(window.location.search);
       const pageParam = urlParams.get('page');
+      console.log('Page initialization - URL params:', window.location.search, 'pageParam:', pageParam);
       if (pageParam) {
         const pageNum = parseInt(pageParam, 10);
         if (!isNaN(pageNum) && pageNum > 0) {
+          console.log('Using page from URL:', pageNum);
           return pageNum;
         }
       }
       
       // Fallback to localStorage
       const savedPage = localStorage.getItem('currentPage');
+      console.log('Page initialization - localStorage:', savedPage);
       if (savedPage) {
         const pageNum = parseInt(savedPage, 10);
         if (!isNaN(pageNum) && pageNum > 0) {
+          console.log('Using page from localStorage:', pageNum);
           return pageNum;
         }
       }
     }
+    console.log('Using default page: 1');
     return 1;
   });
   
@@ -120,7 +128,32 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
   const [userSelected, setUserSelected] = useState<Post[]>([]);
   const queryClient = useQueryClient();
   const [hasMounted, setHasMounted] = useState(false);
-  useEffect(() => { setHasMounted(true); }, []);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const initialLoadProcessed = useRef(false);
+  
+  useEffect(() => { 
+    setHasMounted(true);
+    // Mark initial load as complete after a short delay
+    setTimeout(() => {
+      setIsInitialLoad(false);
+      initialLoadProcessed.current = true;
+    }, 100);
+  }, []);
+
+  // Comic alert states
+  const [showLoginAlert, setShowLoginAlert] = useState(false);
+  const [showProfileAlert, setShowProfileAlert] = useState(false);
+  const [hasSelectedProfile, setHasSelectedProfile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('hasSelectedProfile') === 'true';
+    }
+    return false;
+  });
+  const [lastSelectedPostId, setLastSelectedPostId] = useState<number | null>(null);
+  
+  // Refs for alert targeting
+  const loginButtonRef = useRef<HTMLButtonElement>(null);
+  const profilesDropdownRef = useRef<HTMLSelectElement>(null);
 
   // Save page to localStorage whenever it changes
   useEffect(() => {
@@ -193,14 +226,21 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
     }
   }, [jwt]);
 
-  // Reset page when search, filter, or search filters change
+  // Reset page when search, filter, or search filters change (but not on initial load)
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, filter, selectedFilters]);
+    console.log('Page reset effect triggered - isInitialLoad:', isInitialLoad, 'initialLoadProcessed:', initialLoadProcessed.current, 'debouncedSearch:', debouncedSearch, 'filter:', filter, 'selectedFilters:', selectedFilters);
+    if (initialLoadProcessed.current && hasMounted) {
+      console.log('Resetting page to 1 due to filter/search change');
+      setPage(1);
+    }
+  }, [debouncedSearch, filter, selectedFilters, hasMounted]);
 
   const { data, isLoading, isError, refetch } = usePosts(page, initialData, filter === 'selected' ? undefined : filter, debouncedSearch, selectedFilters);
   const posts: Post[] = data?.posts || [];
   const totalPages = data?.totalPages || 1;
+  
+  // Use posts data as dependency for responsive layout recalculation
+  const { columnCount, columnGap, isOverflowing, containerRef } = useFluidResponsive(posts);
 
   useEffect(() => {
     if (page < totalPages && (!debouncedSearch || !debouncedSearch.trim())) {
@@ -235,6 +275,8 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
 
   // Handle select/unselect for both guest and logged-in user
   const handleSelect = (post: Post) => {
+    const isCurrentlySelected = isSelected(post.id);
+    
     if (jwt) {
       // Backend sync
       const already = userSelected.some(p => p.id === post.id);
@@ -254,16 +296,31 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
           );
         });
     } else {
-      if (!isSelected(post.id) && selected.length >= 20) {
+      if (!isCurrentlySelected && selected.length >= 20) {
         setSelectError('You can only select up to 20 profiles per session.');
         return;
       }
       setSelectError('');
       setSelected(sel =>
-        isSelected(post.id)
+        isCurrentlySelected
           ? sel.filter(p => p.id !== post.id)
           : [...sel, post]
       );
+
+      // Show comic alerts for first-time selection by non-logged-in users
+      if (!isCurrentlySelected && !hasSelectedProfile) {
+        setLastSelectedPostId(post.id);
+        setShowLoginAlert(true);
+        setShowProfileAlert(true);
+        setHasSelectedProfile(true);
+        localStorage.setItem('hasSelectedProfile', 'true');
+        
+        // Auto-dismiss alerts after 8 seconds
+        setTimeout(() => {
+          setShowLoginAlert(false);
+          setShowProfileAlert(false);
+        }, 8000);
+      }
     }
   };
 
@@ -289,12 +346,13 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
         selectedFilters={selectedFilters}
         onFiltersChange={setSelectedFilters}
         page={page}
+        profilesDropdownRef={profilesDropdownRef}
         right={
           !hasMounted ? null : (
             jwt ? (
               <div className="flex items-center gap-3">
                 <span className="font-serif text-sm text-gray-700 font-medium">
-                  Welcome, {userEmail}
+                  {userEmail}
                 </span>
                 <button
                   className="px-4 py-2 bg-transparent text-black font-medium hover:bg-gray-100/50 transition-colors text-sm"
@@ -311,6 +369,7 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
               </div>
             ) : (
               <button
+                ref={loginButtonRef}
                 className="px-4 py-2 bg-transparent text-black font-medium hover:bg-gray-100/50 transition-colors text-sm"
                 onClick={() => setAuthDialogOpen(true)}
               >
@@ -323,15 +382,34 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
       {selectError && (
         <div className="text-center text-red-600 mb-4 font-serif font-bold">{selectError}</div>
       )}
+      {isOverflowing && (
+        <div className="text-center text-orange-600 mb-2 font-serif text-sm bg-orange-50 p-2 rounded">
+          Layout adjusting to fit screen width...
+        </div>
+      )}
       {isLoading ? (
         <div className="text-center py-12 text-lg font-serif">Loading matrimonial advertisements...</div>
       ) : isError ? (
         <div className="text-center py-12 text-red-600 font-serif">Failed to load advertisements.</div>
       ) : (
-        <div className="columns-1 md:columns-2 lg:columns-5 gap-0 newspaper-masonry pt-2">
+        <div className="container-responsive" ref={containerRef}>
+          <div 
+            className="gap-0 newspaper-masonry pt-2 px-2 sm:px-4 lg:px-6 text-responsive" 
+            style={{ 
+              columnCount: columnCount,
+              columnFill: 'balance',
+              columnGap: `${columnGap}px`,
+              width: '100%',
+              maxWidth: '100%',
+              overflow: 'hidden'
+            }}
+          >
           {showPosts
             .map((post: Post) => (
-              <div key={post.id} className="break-inside-avoid mb-4">
+              <div 
+                key={post.id} 
+                className="break-inside-avoid mb-3 sm:mb-4"
+              >
                 <NewspaperCard
                   content={post.content}
                   selected={isSelected(post.id)}
@@ -342,20 +420,21 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
                 />
               </div>
             ))}
+          </div>
         </div>
       )}
       {showPagination && (
         <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
       )}
       {showPagination && (
-        <div className="text-center text-xs text-gray-600 mt-6 font-serif italic">
+        <div className="text-center text-xs sm:text-sm text-gray-600 mt-4 sm:mt-6 font-serif italic px-2 sm:px-4">
           Page {page} of {totalPages} | Showing matrimonial advertisements
           {filter === 'bride' && ` (${texts.filterBride})`}
           {filter === 'groom' && ` (${texts.filterGroom})`}
         </div>
       )}
       {filter === 'selected' && (
-        <div className="text-center text-xs text-gray-600 mt-6 font-serif italic">
+        <div className="text-center text-xs sm:text-sm text-gray-600 mt-4 sm:mt-6 font-serif italic px-2 sm:px-4">
           Showing {selectedPosts.length} selected profile{selectedPosts.length !== 1 ? 's' : ''}
         </div>
       )}
@@ -377,6 +456,7 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
         userEmail={userEmail || ''}
         jwt={jwt || ''}
         postId={showEmailDialog.postId}
+        onOpenAuthDialog={() => setAuthDialogOpen(true)}
       />
       <AuthDialog
         open={authDialogOpen}
@@ -388,6 +468,19 @@ export default function HomePageClient({ initialData }: { initialData: PostsData
           localStorage.setItem('userEmail', email);
           setAuthDialogOpen(false);
         }}
+      />
+      
+      {/* Comic Alerts */}
+      <LoginButtonAlert
+        show={showLoginAlert}
+        onDismiss={() => setShowLoginAlert(false)}
+        loginButtonRef={loginButtonRef}
+      />
+      
+      <ProfileCardAlert
+        show={showProfileAlert}
+        onDismiss={() => setShowProfileAlert(false)}
+        profilesDropdownRef={profilesDropdownRef}
       />
     </>
   );

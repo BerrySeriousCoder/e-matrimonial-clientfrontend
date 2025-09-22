@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog } from '@headlessui/react';
 import { useUITexts } from '../hooks/useUITexts';
+import NewspaperCard from './NewspaperCard';
+import { useToast } from './ToastContext';
 
 const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 
@@ -18,18 +19,13 @@ const validateOTP = (otp: string): boolean => {
   return /^\d{6}$/.test(otp);
 };
 
-// Color options for background
+// Color options for background - Updated to match validation (only 5 colors)
 const bgColorOptions = [
   { name: 'Default White', value: '#ffffff' },
-  { name: 'Light Blue', value: '#f0f8ff' },
-  { name: 'Light Green', value: '#f0fff0' },
-  { name: 'Light Pink', value: '#fff0f5' },
-  { name: 'Light Gray', value: '#f8f8ff' },
-  { name: 'Light Yellow', value: '#f5f5dc' },
-  { name: 'Light Orange', value: '#faf0e6' },
-  { name: 'Light Purple', value: '#f8f0ff' },
-  { name: 'Light Cyan', value: '#f0ffff' },
-  { name: 'Light Salmon', value: '#fff5ee' },
+  { name: 'Light Blue', value: '#e6f3ff' },
+  { name: 'Soft Blue', value: '#cce7ff' },
+  { name: 'Light Pink', value: '#ffe6f0' },
+  { name: 'Soft Pink', value: '#ffcce6' }
 ];
 
 export default function PostAdDialog({ 
@@ -48,48 +44,96 @@ export default function PostAdDialog({
   jwt?: string;
 }) {
   const { texts } = useUITexts();
+  const { showSuccess, showError, showInfo } = useToast();
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [email, setEmail] = useState('');
   const [content, setContent] = useState('');
   const [lookingFor, setLookingFor] = useState<'bride' | 'groom'>('bride');
-  const [duration, setDuration] = useState<28 | 42 | 56>(28);
-  const [characterLimit, setCharacterLimit] = useState(400);
+  const [duration, setDuration] = useState<14 | 21 | 28>(14); // Updated: 2, 3, 4 weeks
+  const [characterLimit, setCharacterLimit] = useState(200); // Updated: Base limit is 200
   const [currentCharacters, setCurrentCharacters] = useState(0);
+  const [fontSize, setFontSize] = useState<'default' | 'large'>('default'); // Updated: removed 'medium'
+  const [paymentCalculation, setPaymentCalculation] = useState<any>(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponApplied, setCouponApplied] = useState(false);
   
   // Update character count when content changes
   useEffect(() => {
     setCurrentCharacters(content.length);
   }, [content]);
   
-  // Increase character limit function
-  const increaseLimit = () => {
-    if (characterLimit < 1000) {
-      setCharacterLimit(prev => Math.min(prev + 100, 1000));
+  // Calculate payment when content, fontSize, or duration changes
+  useEffect(() => {
+    if (content.length >= 10) {
+      calculatePayment();
+    }
+  }, [content, fontSize, duration, couponCode]);
+  
+  const calculatePayment = async () => {
+    try {
+      const response = await fetch(`${API_URL}/payment/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content,
+          fontSize,
+          duration,
+          couponCode: couponCode || undefined
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPaymentCalculation(data.calculation);
+      }
+    } catch (error) {
+      console.error('Payment calculation error:', error);
     }
   };
-  const [fontSize, setFontSize] = useState<'default' | 'medium' | 'large'>('default');
   const [bgColor, setBgColor] = useState('#ffffff');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
 
-  // Auto-populate email for authenticated users
+  // Auto-populate email for authenticated users and reset form when dialog opens
   useEffect(() => {
-    if (isAuthenticated && userEmail) {
-      setEmail(userEmail);
-    } else {
-      setEmail('');
+    if (open) {
+      // Reset form state when dialog opens
+      setStep('form');
+      setContent('');
+      setLookingFor('bride');
+      setDuration(14);
+      setCharacterLimit(200);
+      setCurrentCharacters(0);
+      setFontSize('default');
+      setBgColor('#ffffff');
+      setOtp('');
+      setError('');
+      setInfo('');
+      setPaymentCalculation(null);
+      setCouponCode('');
+      setCouponApplied(false);
+      
+      // Set email for authenticated users
+      if (isAuthenticated && userEmail) {
+        setEmail(userEmail);
+      } else {
+        setEmail('');
+      }
     }
   }, [open, isAuthenticated, userEmail]);
 
   const handleRequestOtp = async () => {
     if (!validateEmail(email)) {
-      setError('Please enter a valid email address');
+      const errorMsg = 'Please enter a valid email address';
+      setError(errorMsg);
+      showError('Invalid Email', errorMsg);
       return;
     }
-    if (!validateContent(content, characterLimit)) {
-      setError(`Content must be between 10 and ${characterLimit} characters`);
+    if (content.length < 10) {
+      const errorMsg = 'Content must be at least 10 characters long';
+      setError(errorMsg);
+      showError('Invalid Content', errorMsg);
       return;
     }
     
@@ -103,10 +147,13 @@ export default function PostAdDialog({
       const data = await res.json();
       if (!data.success) throw new Error(data.message);
       setStep('otp');
-      setInfo('OTP sent to your email. Please check and enter below.');
+      const successMsg = 'OTP sent to your email. Please check and enter below.';
+      setInfo(successMsg);
+      showSuccess('OTP Sent', 'Check your email for the verification code');
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : 'Failed to send OTP';
       setError(errorMessage);
+      showError('OTP Request Failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -115,7 +162,9 @@ export default function PostAdDialog({
   // For authenticated users - direct post creation
   const handleAuthenticatedSubmit = async () => {
     if (!validateContent(content, characterLimit)) {
-      setError(`Content must be between 10 and ${characterLimit} characters`);
+      const errorMsg = `Content must be between 10 and ${characterLimit} characters`;
+      setError(errorMsg);
+      showError('Invalid Content', errorMsg);
       return;
     }
     
@@ -132,16 +181,20 @@ export default function PostAdDialog({
           lookingFor, 
           duration, 
           fontSize, 
-          bgColor 
+          bgColor,
+          couponCode: couponCode || undefined
         }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message);
-      setInfo('Ad posted successfully and pending approval!');
+      const successMsg = 'Ad posted successfully and pending approval!';
+      setInfo(successMsg);
+      showSuccess('Ad Submitted Successfully', 'Your matrimonial advertisement is submitted for manual screening and approval by the admin. Keep checking your email for further status updates.');
       setTimeout(() => { onSuccess(); onClose(); }, 1200);
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : 'Failed to post ad';
       setError(errorMessage);
+      showError('Ad Submission Failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -150,15 +203,21 @@ export default function PostAdDialog({
   // For anonymous users - OTP verification
   const handleAnonymousSubmit = async () => {
     if (!validateEmail(email)) {
-      setError('Please enter a valid email address');
+      const errorMsg = 'Please enter a valid email address';
+      setError(errorMsg);
+      showError('Invalid Email', errorMsg);
       return;
     }
-    if (!validateContent(content, characterLimit)) {
-      setError(`Content must be between 10 and ${characterLimit} characters`);
+    if (content.length < 10) {
+      const errorMsg = 'Content must be at least 10 characters long';
+      setError(errorMsg);
+      showError('Invalid Content', errorMsg);
       return;
     }
     if (!validateOTP(otp)) {
-      setError('Please enter a valid 6-digit OTP');
+      const errorMsg = 'Please enter a valid 6-digit OTP';
+      setError(errorMsg);
+      showError('Invalid OTP', errorMsg);
       return;
     }
     
@@ -174,422 +233,368 @@ export default function PostAdDialog({
           lookingFor, 
           duration, 
           fontSize, 
-          bgColor 
+          bgColor,
+          couponCode: couponCode || undefined
         }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.message);
-      setInfo('Ad posted successfully and pending approval!');
+      const successMsg = 'Ad posted successfully and pending approval!';
+      setInfo(successMsg);
+      showSuccess('Ad Submitted Successfully', 'Your matrimonial advertisement is submitted for manual screening and approval by the admin. Keep checking your email for further status updates.');
       setTimeout(() => { onSuccess(); onClose(); }, 1200);
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : 'Failed to post ad';
       setError(errorMessage);
+      showError('Ad Submission Failed', errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const closeDialog = () => {
+  const closeSheet = () => {
     setStep('form'); 
     if (!isAuthenticated) setEmail(''); 
     setContent(''); 
     setLookingFor('bride');
-    setDuration(28);
-    setCharacterLimit(400);
+    setDuration(14); // Reset to default 14 days
+    setCharacterLimit(200); // Reset to base limit
     setCurrentCharacters(0);
     setFontSize('default');
     setBgColor('#ffffff');
     setOtp(''); 
     setError(''); 
     setInfo('');
+    setPaymentCalculation(null); // Reset payment calculation
+    setCouponCode(''); // Reset coupon code
+    setCouponApplied(false); // Reset coupon applied state
     onClose();
   };
 
   return (
-    <Dialog open={open} onClose={closeDialog} className="relative z-50">
-      <div className="fixed inset-0 bg-black/50 transition-opacity duration-500" aria-hidden="true" />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="bg-white border border-gray-300 shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden">
-          {/* Header - Newspaper Style */}
-          <div className="bg-gray-900 text-white px-6 py-4 border-b-4 border-amber-700">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-amber-700 rounded flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold tracking-wide uppercase">{texts.postAd}</h3>
-                  <p className="text-xs text-gray-300 uppercase tracking-wider">Create your matrimonial advertisement</p>
-                </div>
+    <>
+      {/* Backdrop */}
+      <div 
+        className={`fixed inset-0 z-40 transition-opacity duration-300 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} 
+        onClick={closeSheet}
+      />
+
+      {/* Right-side sheet */}
+      <aside
+        className={`fixed right-0 top-0 h-full z-50 w-full sm:w-[560px] max-w-[98vw] border-l border-gray-400 transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
+        style={{
+          backgroundColor: 'var(--color-newsprint)',
+          backgroundImage: 'url("https://www.transparenttextures.com/patterns/clean-gray-paper.png")',
+          backgroundRepeat: 'repeat',
+          backgroundSize: 'auto'
+        }}
+        aria-hidden={!open}
+      >
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="px-5 py-4 border-b-2" style={{ borderColor: 'var(--color-ink)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold uppercase tracking-wide" style={{ color: 'var(--color-headline)', fontFamily: 'var(--font-serif)' }}>{texts.postAd}</h3>
+                <p className="text-xs" style={{ color: '#4b5563' }}>Create your matrimonial advertisement</p>
               </div>
               <button
-                onClick={closeDialog}
-                className="text-gray-400 hover:text-white transition-colors"
+                onClick={closeSheet}
+                className="px-3 py-1 text-xs border border-gray-500 hover:bg-gray-200 transition-colors"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                Close
               </button>
             </div>
           </div>
 
-          {/* Content */}
-          <div className="p-6 max-h-[600px] overflow-y-auto bg-gray-50">
-            {/* Status Info */}
+          {/* Status Info */}
+          <div className="px-5 py-3 border-b border-gray-300">
             {isAuthenticated ? (
-              <div className="bg-green-50 border border-green-200 text-green-800 p-4 mb-6 rounded">
-                <div className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="font-medium">You&apos;re logged in as <strong>{userEmail}</strong>. You can post ads directly without OTP verification.</span>
-                </div>
+              <div className="text-sm" style={{ color: '#065f46' }}>
+                You&apos;re logged in as <strong>{userEmail}</strong>. You can post ads directly without OTP verification.
               </div>
             ) : (
-              <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 mb-6 rounded">
-                <div className="flex items-start space-x-2">
-                  <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div>
-                    <p className="font-medium">Enter your details and ad content. We&apos;ll verify your email with an OTP before posting.</p>
-                    <p className="text-sm mt-1">
-                      💡 Want to skip OTP verification? 
-                      <button 
-                        onClick={() => window.location.href = '/#login'} 
-                        className="text-blue-600 hover:text-blue-800 underline ml-1"
-                      >
-                        Login here
-                      </button> 
-                      for a faster experience!
-                    </p>
-                  </div>
-                </div>
+              <div className="text-sm" style={{ color: '#1f2937' }}>
+                Enter your details and ad content. We&apos;ll verify your email with an OTP before posting.
               </div>
-            )}
-
-            {isAuthenticated ? (
-              // Authenticated user flow - direct post creation
-              <div className="bg-white border border-gray-300 shadow-sm">
-                <div className="bg-gray-100 border-b border-gray-300 px-4 py-3">
-                  <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide">Ad Details</h4>
-                </div>
-                <div className="p-4">
-                  <form onSubmit={e => { e.preventDefault(); handleAuthenticatedSubmit(); }}>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-                          {texts.yourEmail}
-                        </label>
-                        <input 
-                          type="email" 
-                          value={email} 
-                          disabled 
-                          className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-600" 
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-                          Looking For
-                        </label>
-                        <select value={lookingFor} onChange={e => setLookingFor(e.target.value as 'bride' | 'groom')}
-                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600">
-                          <option value="bride">Bride</option>
-                          <option value="groom">Groom</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-                          Ad Duration
-                        </label>
-                        <select value={duration} onChange={e => setDuration(Number(e.target.value) as 28 | 42 | 56)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600">
-                          <option value={28}>4 weeks</option>
-                          <option value={42}>6 weeks</option>
-                          <option value={56}>8 weeks</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-                          Font Size
-                        </label>
-                        <select value={fontSize} onChange={e => setFontSize(e.target.value as 'default' | 'medium' | 'large')}
-                          className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600">
-                          <option value="default">Default</option>
-                          <option value="medium">Medium</option>
-                          <option value="large">Large</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-                          Background Color
-                        </label>
-                        <div className="grid grid-cols-5 gap-2 mt-2">
-                          {bgColorOptions.map((color) => (
-                            <button
-                              key={color.value}
-                              type="button"
-                              onClick={() => setBgColor(color.value)}
-                              className={`p-3 border-2 transition-colors ${
-                                bgColor === color.value
-                                  ? 'border-amber-700'
-                                  : 'border-gray-200 hover:border-amber-500'
-                              }`}
-                              style={{ backgroundColor: color.value }}
-                              title={color.name}
-                            >
-                              <span className="sr-only">{color.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Selected: {bgColorOptions.find(c => c.value === bgColor)?.name}
-                        </p>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <label className="block text-sm font-bold text-gray-900 uppercase tracking-wide">
-                            {texts.adContent}
-                          </label>
-                          <div className="flex items-center space-x-2">
-                            <span className={`text-xs font-medium ${
-                              currentCharacters > characterLimit * 0.9 ? 'text-red-600' : 
-                              currentCharacters > characterLimit * 0.7 ? 'text-amber-600' : 'text-gray-500'
-                            }`}>
-                              {currentCharacters}/{characterLimit} characters
-                            </span>
-                            {characterLimit < 1000 && (
-                              <button
-                                type="button"
-                                onClick={increaseLimit}
-                                className="text-xs bg-amber-700 text-white px-2 py-1 rounded hover:bg-amber-800 transition-colors"
-                              >
-                                +100 chars
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        <textarea 
-                          required 
-                          value={content} 
-                          onChange={e => setContent(e.target.value)}
-                          maxLength={characterLimit}
-                          className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-1 min-h-[120px] resize-vertical ${
-                            currentCharacters > characterLimit * 0.9 ? 'border-red-300 focus:border-red-600 focus:ring-red-600' :
-                            currentCharacters > characterLimit * 0.7 ? 'border-amber-300 focus:border-amber-600 focus:ring-amber-600' :
-                            'border-gray-300 focus:border-amber-600 focus:ring-amber-600'
-                          }`}
-                          placeholder={texts.contentPlaceholder} 
-                        />
-                      </div>
-
-                      {error && <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded">{error}</div>}
-                      {info && <div className="p-3 bg-green-50 border border-green-200 text-green-800 text-sm rounded">{info}</div>}
-                    </div>
-                  </form>
-                </div>
-              </div>
-            ) : (
-              // Anonymous user flow - OTP verification
-              <>
-                {step === 'form' && (
-                  <div className="bg-white border border-gray-300 shadow-sm">
-                    <div className="bg-gray-100 border-b border-gray-300 px-4 py-3">
-                      <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide">Ad Details</h4>
-                    </div>
-                    <div className="p-4">
-                      <form onSubmit={e => { e.preventDefault(); handleRequestOtp(); }}>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-                              {texts.yourEmail}
-                            </label>
-                            <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600" placeholder={texts.emailPlaceholder} autoFocus />
-                          </div>
-                          
-                          <div>
-                            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-                              Looking For
-                            </label>
-                            <select value={lookingFor} onChange={e => setLookingFor(e.target.value as 'bride' | 'groom')}
-                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600">
-                              <option value="bride">Bride</option>
-                              <option value="groom">Groom</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-                              Ad Duration
-                            </label>
-                            <select value={duration} onChange={e => setDuration(Number(e.target.value) as 28 | 42 | 56)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600">
-                              <option value={28}>4 weeks</option>
-                              <option value={42}>6 weeks</option>
-                              <option value={56}>8 weeks</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-                              Font Size
-                            </label>
-                            <select value={fontSize} onChange={e => setFontSize(e.target.value as 'default' | 'medium' | 'large')}
-                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600">
-                              <option value="default">Default</option>
-                              <option value="medium">Medium</option>
-                              <option value="large">Large</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-                              Background Color
-                            </label>
-                            <div className="grid grid-cols-5 gap-2 mt-2">
-                              {bgColorOptions.map((color) => (
-                                <button
-                                  key={color.value}
-                                  type="button"
-                                  onClick={() => setBgColor(color.value)}
-                                  className={`p-3 border-2 transition-colors ${
-                                    bgColor === color.value
-                                      ? 'border-amber-700'
-                                      : 'border-gray-200 hover:border-amber-500'
-                                  }`}
-                                  style={{ backgroundColor: color.value }}
-                                  title={color.name}
-                                >
-                                  <span className="sr-only">{color.name}</span>
-                                </button>
-                              ))}
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Selected: {bgColorOptions.find(c => c.value === bgColor)?.name}
-                            </p>
-                          </div>
-
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <label className="block text-sm font-bold text-gray-900 uppercase tracking-wide">
-                                {texts.adContent}
-                              </label>
-                              <div className="flex items-center space-x-2">
-                                <span className={`text-xs font-medium ${
-                                  currentCharacters > characterLimit * 0.9 ? 'text-red-600' : 
-                                  currentCharacters > characterLimit * 0.7 ? 'text-amber-600' : 'text-gray-500'
-                                }`}>
-                                  {currentCharacters}/{characterLimit} characters
-                                </span>
-                                {characterLimit < 1000 && (
-                                  <button
-                                    type="button"
-                                    onClick={increaseLimit}
-                                    className="text-xs bg-amber-700 text-white px-2 py-1 rounded hover:bg-amber-800 transition-colors"
-                                  >
-                                    +100 chars
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                            <textarea 
-                              required 
-                              value={content} 
-                              onChange={e => setContent(e.target.value)}
-                              maxLength={characterLimit}
-                              className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-1 min-h-[120px] resize-vertical ${
-                                currentCharacters > characterLimit * 0.9 ? 'border-red-300 focus:border-red-600 focus:ring-red-600' :
-                                currentCharacters > characterLimit * 0.7 ? 'border-amber-300 focus:border-amber-600 focus:ring-amber-600' :
-                                'border-gray-300 focus:border-amber-600 focus:ring-amber-600'
-                              }`}
-                              placeholder={texts.contentPlaceholder} 
-                            />
-                          </div>
-
-                          {error && <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded">{error}</div>}
-                          {info && <div className="p-3 bg-green-50 border border-green-200 text-green-800 text-sm rounded">{info}</div>}
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
-                {step === 'otp' && (
-                  <div className="bg-white border border-gray-300 shadow-sm">
-                    <div className="bg-gray-100 border-b border-gray-300 px-4 py-3">
-                      <h4 className="font-bold text-gray-900 text-sm uppercase tracking-wide">Verify OTP</h4>
-                    </div>
-                    <div className="p-4">
-                      <form onSubmit={e => { e.preventDefault(); handleAnonymousSubmit(); }}>
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">
-                              {texts.otpPlaceholder}
-                            </label>
-                            <input type="text" required value={otp} onChange={e => setOtp(e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-600" placeholder={texts.otpPlaceholder} autoFocus />
-                          </div>
-                          {error && <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-sm rounded">{error}</div>}
-                          {info && <div className="p-3 bg-green-50 border border-green-200 text-green-800 text-sm rounded">{info}</div>}
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
-              </>
             )}
           </div>
 
-          {/* Footer Actions - Newspaper Footer */}
-          <div className="bg-gray-100 px-6 py-4 border-t border-gray-300">
-            <div className="flex justify-end space-x-3">
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto px-5 py-4">
+            {/* Form sections */}
+            <div className="space-y-4">
+              {!isAuthenticated && step === 'form' && (
+                <div className="border border-gray-300">
+                  <div className="px-4 py-3 border-b border-gray-300 bg-white/60">
+                    <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>{texts.yourEmail}</h4>
+                  </div>
+                  <div className="p-4 bg-white/70">
+                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black" placeholder={texts.emailPlaceholder} autoFocus />
+                  </div>
+                </div>
+              )}
+
+              <div className="border border-gray-300">
+                <div className="px-4 py-3 border-b border-gray-300 bg-white/60">
+                  <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>I am looking for</h4>
+                </div>
+                <div className="p-4 bg-white/70">
+                  <select value={lookingFor} onChange={e => setLookingFor(e.target.value as 'bride' | 'groom')}
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black">
+                    <option value="bride">Bride</option>
+                    <option value="groom">Groom</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="border border-gray-300">
+                <div className="px-4 py-3 border-b border-gray-300 bg-white/60">
+                  <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>Ad Duration</h4>
+                </div>
+                <div className="p-4 bg-white/70">
+                  <select value={duration} onChange={e => setDuration(Number(e.target.value) as 14 | 21 | 28)}
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black">
+                    <option value={14}>2 weeks</option>
+                    <option value={21}>3 weeks</option>
+                    <option value={28}>4 weeks</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="border border-gray-300">
+                <div className="px-4 py-3 border-b border-gray-300 bg-white/60">
+                  <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>Font Size</h4>
+                </div>
+                <div className="p-4 bg-white/70">
+                  <select value={fontSize} onChange={e => setFontSize(e.target.value as 'default' | 'large')}
+                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black">
+                    <option value="default">Default</option>
+                    <option value="large">Large (+20%)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="border border-gray-300">
+                <div className="px-4 py-3 border-b border-gray-300 bg-white/60">
+                  <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>Background Color</h4>
+                </div>
+                <div className="p-4 bg-white/70">
+                  <div className="grid grid-cols-5 gap-2 mt-2">
+                    {bgColorOptions.map((color) => (
+                      <button
+                        key={color.value}
+                        type="button"
+                        onClick={() => setBgColor(color.value)}
+                        className={`p-3 border transition-colors ${
+                          bgColor === color.value
+                            ? 'border-black'
+                            : 'border-gray-300 hover:border-gray-500'
+                        }`}
+                        style={{ backgroundColor: color.value }}
+                        title={color.name}
+                      >
+                        <span className="sr-only">{color.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Selected: {bgColorOptions.find(c => c.value === bgColor)?.name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Coupon Code Input */}
+              <div className="border border-gray-300">
+                <div className="px-4 py-3 border-b border-gray-300 bg-white/60">
+                  <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>Coupon Code (Optional)</h4>
+                </div>
+                <div className="p-4 bg-white/70">
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={couponCode} 
+                      onChange={e => setCouponCode(e.target.value)}
+                      placeholder="Enter coupon code"
+                      className="flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:border-black"
+                    />
+                    <button
+                      type="button"
+                      onClick={calculatePayment}
+                      className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  {couponApplied && (
+                    <p className="text-green-600 text-sm mt-2">✓ Coupon applied successfully!</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Payment Calculation Display */}
+              {paymentCalculation && (
+                <div className="border border-gray-300">
+                  <div className="px-4 py-3 border-b border-gray-300 bg-white/60">
+                    <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>Payment Summary</h4>
+                  </div>
+                  <div className="p-4 bg-white/70">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span>Base amount (first 200 chars):</span>
+                        <span>₹{paymentCalculation.baseAmount?.toLocaleString('en-IN')}</span>
+                      </div>
+                      {paymentCalculation.additionalCharacters > 0 && (
+                        <div className="flex justify-between">
+                          <span>Additional chars ({paymentCalculation.additionalCharacters}):</span>
+                          <span>₹{paymentCalculation.additionalCost?.toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                      {paymentCalculation.fontMultiplier > 1 && (
+                        <div className="flex justify-between">
+                          <span>Large font (+20%):</span>
+                          <span>+₹{Math.round(paymentCalculation.subtotal - paymentCalculation.baseAmount).toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span>Duration ({duration} days):</span>
+                        <span>×{paymentCalculation.visibilityMultiplier}</span>
+                      </div>
+                      <div className="border-t pt-2 flex justify-between font-semibold">
+                        <span>Subtotal:</span>
+                        <span>₹{paymentCalculation.subtotal?.toLocaleString('en-IN')}</span>
+                      </div>
+                      {paymentCalculation.discountAmount > 0 && (
+                        <div className="flex justify-between text-green-600">
+                          <span>Discount ({paymentCalculation.couponCode}):</span>
+                          <span>-₹{paymentCalculation.discountAmount?.toLocaleString('en-IN')}</span>
+                        </div>
+                      )}
+                      <div className="border-t pt-2 flex justify-between font-bold text-lg">
+                        <span>Total Amount:</span>
+                        <span className="text-blue-600">₹{paymentCalculation.finalAmount?.toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="border border-gray-300">
+                <div className="px-4 py-3 border-b border-gray-300 bg-white/60">
+                  <div className="flex justify-between items-center">
+                    <label className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>
+                      {texts.adContent}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-medium ${
+                        currentCharacters > 200 ? 'text-red-600' : 'text-gray-600'
+                      }`}>
+                        {currentCharacters} characters
+                        {currentCharacters > 200 && (
+                          <span className="text-gray-500"> (200 free + {currentCharacters - 200} paid)</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 bg-white/70">
+                  <textarea 
+                    required 
+                    value={content} 
+                    onChange={e => setContent(e.target.value)}
+                    className={`w-full px-3 py-2 border focus:outline-none min-h-[120px] resize-vertical ${
+                      currentCharacters > 200 ? 'border-red-300 focus:border-red-600' :
+                      'border-gray-300 focus:border-black'
+                    }`}
+                    placeholder={texts.contentPlaceholder} 
+                  />
+                  {currentCharacters > 200 && (
+                    <div className="mt-2 text-xs text-red-600">
+                      Characters beyond 200 will be charged at ₹500 per 20 characters
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {error && <div className="p-3 border border-red-200 text-red-800 text-sm">{error}</div>}
+              {info && <div className="p-3 border border-green-200 text-green-800 text-sm">{info}</div>}
+
+              {/* OTP step for anonymous users */}
+              {!isAuthenticated && step === 'otp' && (
+                <div className="border border-gray-300">
+                  <div className="px-4 py-3 border-b border-gray-300 bg-white/60">
+                    <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>Verify OTP</h4>
+                  </div>
+                  <div className="p-4 bg-white/70">
+                    <input type="text" required value={otp} onChange={e => setOtp(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black" placeholder={texts.otpPlaceholder} autoFocus />
+                  </div>
+                </div>
+              )}
+
+              {/* Live Preview */}
+              <div className="border border-gray-800">
+                <div className="px-4 py-3 border-b border-gray-800" style={{ backgroundColor: 'var(--color-newsprint)' }}>
+                  <h4 className="font-bold text-sm uppercase tracking-wide" style={{ color: 'var(--color-ink)' }}>Live Preview</h4>
+                </div>
+                <div className="p-3" style={{ backgroundColor: 'var(--color-newsprint)' }}>
+                  <NewspaperCard
+                    content={content || 'Seeking alliance: Educated, family-oriented, and kind-hearted. Please contact for more details.'}
+                    selected={false}
+                    onSelect={() => {}}
+                    onEmail={() => {}}
+                    fontSize={fontSize}
+                    bgColor={bgColor}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer actions */}
+          <div className="px-5 py-4 border-t border-gray-300 bg-white/60">
+            <div className="flex justify-end gap-3">
               <button
-                onClick={closeDialog}
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium rounded border border-gray-300 hover:bg-gray-200 transition-colors text-sm"
+                onClick={closeSheet}
+                className="px-4 py-2 text-sm border border-gray-500 hover:bg-gray-200 transition-colors"
               >
-                {texts.cancel}
+                Cancel
               </button>
               {isAuthenticated ? (
                 <button
                   onClick={handleAuthenticatedSubmit}
                   disabled={loading}
-                  className="px-4 py-2 bg-amber-700 text-white rounded hover:bg-amber-800 font-semibold transition-colors text-sm shadow-sm disabled:opacity-50"
+                  className="px-4 py-2 text-sm border border-black text-white"
+                  style={{ backgroundColor: 'var(--color-ink)' }}
                 >
                   {loading ? 'Posting Ad...' : texts.submit}
                 </button>
               ) : (
-                <>
-                  {step === 'form' && (
-                    <button
-                      onClick={handleRequestOtp}
-                      disabled={loading}
-                      className="px-4 py-2 bg-amber-700 text-white rounded hover:bg-amber-800 font-semibold transition-colors text-sm shadow-sm disabled:opacity-50"
-                    >
-                      {loading ? 'Sending OTP...' : texts.requestOtp}
-                    </button>
-                  )}
-                  {step === 'otp' && (
-                    <button
-                      onClick={handleAnonymousSubmit}
-                      disabled={loading}
-                      className="px-4 py-2 bg-amber-700 text-white rounded hover:bg-amber-800 font-semibold transition-colors text-sm shadow-sm disabled:opacity-50"
-                    >
-                      {loading ? 'Posting Ad...' : texts.submit}
-                    </button>
-                  )}
-                </>
+                step === 'form' ? (
+                  <button
+                    onClick={handleRequestOtp}
+                    disabled={loading}
+                    className="px-4 py-2 text-sm border border-black text-white"
+                    style={{ backgroundColor: 'var(--color-ink)' }}
+                  >
+                    {loading ? 'Sending OTP...' : texts.requestOtp}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleAnonymousSubmit}
+                    disabled={loading}
+                    className="px-4 py-2 text-sm border border-black text-white"
+                    style={{ backgroundColor: 'var(--color-ink)' }}
+                  >
+                    {loading ? 'Posting Ad...' : texts.submit}
+                  </button>
+                )
               )}
             </div>
           </div>
-        </Dialog.Panel>
-      </div>
-    </Dialog>
+        </div>
+      </aside>
+    </>
   );
 } 
