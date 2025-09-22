@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 export default function PaymentCallbackPage() {
-  const [status, setStatus] = useState<'processing' | 'verified' | 'unverified'>('processing');
+  const [status, setStatus] = useState<'processing' | 'success' | 'failed'>('processing');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -24,18 +24,19 @@ export default function PaymentCallbackPage() {
           body: JSON.stringify(payload),
         });
         const data = await res.json();
-        setStatus(data?.success ? 'verified' : 'unverified');
+        setStatus(data?.success ? 'success' : 'failed');
       } catch {
-        setStatus('unverified');
+        setStatus('failed');
       } finally {
-        // Redirect to home (or success page) after a short delay
-        setTimeout(() => { window.location.replace('/'); }, 1200);
+        // Give the user a moment to read the result before redirecting
+        setTimeout(() => { window.location.replace('/'); }, 1800);
       }
     };
 
     // Require core params; if missing, just redirect soon
     if (payload.payment_link_id && payload.razorpay_payment_id && payload.payment_link_reference_id) {
-      verify();
+      // Show processing for a short beat for better UX
+      setTimeout(verify, 400);
     } else {
       setTimeout(() => { window.location.replace('/'); }, 800);
     }
@@ -43,13 +44,25 @@ export default function PaymentCallbackPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundImage: 'url("/clean-gray-paper.png")', backgroundRepeat: 'repeat' }}>
-      <div className="text-center p-6 bg-white/70 border">
-        <h1 className="text-xl font-semibold text-gray-900">Processing payment...</h1>
-        <p className="text-gray-700 mt-2">
-          {status === 'processing' && 'Please wait while we confirm your payment.'}
-          {status === 'verified' && 'Payment verified! Redirecting...'}
-          {status === 'unverified' && 'Redirecting...'}
-        </p>
+      <div className="text-center p-6 bg-white/80 border">
+        {status === 'processing' && (
+          <>
+            <h1 className="text-xl font-semibold text-gray-900">Checking payment...</h1>
+            <p className="text-gray-700 mt-2">Please wait while we confirm your payment.</p>
+          </>
+        )}
+        {status === 'success' && (
+          <>
+            <h1 className="text-xl font-semibold text-green-700">Payment successful</h1>
+            <p className="text-gray-700 mt-2">Redirecting to home...</p>
+          </>
+        )}
+        {status === 'failed' && (
+          <>
+            <h1 className="text-xl font-semibold text-red-700">Payment status pending</h1>
+            <p className="text-gray-700 mt-2">We’ll finalize shortly. Redirecting...</p>
+          </>
+        )}
       </div>
     </div>
   );
