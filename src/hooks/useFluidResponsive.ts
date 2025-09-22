@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export function useFluidResponsive(dependency?: any) {
+export function useFluidResponsive(dependency?: unknown) {
   const [columnCount, setColumnCount] = useState(1);
   const [columnGap, setColumnGap] = useState(12);
   const [isOverflowing, setIsOverflowing] = useState(false);

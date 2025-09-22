@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useUITexts } from '../hooks/useUITexts';
 import NewspaperCard from './NewspaperCard';
 import { useToast } from './ToastContext';
@@ -28,6 +28,18 @@ const bgColorOptions = [
   { name: 'Soft Pink', value: '#ffcce6' }
 ];
 
+type PaymentCalculation = {
+  baseAmount?: number;
+  additionalCharacters: number;
+  additionalCost?: number;
+  fontMultiplier: number;
+  subtotal: number;
+  visibilityMultiplier: number;
+  discountAmount: number;
+  couponCode?: string;
+  finalAmount: number;
+};
+
 export default function PostAdDialog({ 
   open, 
   onClose, 
@@ -53,7 +65,7 @@ export default function PostAdDialog({
   const [characterLimit, setCharacterLimit] = useState(200); // Updated: Base limit is 200
   const [currentCharacters, setCurrentCharacters] = useState(0);
   const [fontSize, setFontSize] = useState<'default' | 'large'>('default'); // Updated: removed 'medium'
-  const [paymentCalculation, setPaymentCalculation] = useState<any>(null);
+  const [paymentCalculation, setPaymentCalculation] = useState<PaymentCalculation | null>(null);
   const [couponCode, setCouponCode] = useState('');
   const [couponApplied, setCouponApplied] = useState(false);
   
@@ -62,14 +74,7 @@ export default function PostAdDialog({
     setCurrentCharacters(content.length);
   }, [content]);
   
-  // Calculate payment when content, fontSize, or duration changes
-  useEffect(() => {
-    if (content.length >= 10) {
-      calculatePayment();
-    }
-  }, [content, fontSize, duration, couponCode]);
-  
-  const calculatePayment = async () => {
+  const calculatePayment = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/payment/calculate`, {
         method: 'POST',
@@ -88,7 +93,14 @@ export default function PostAdDialog({
     } catch (error) {
       console.error('Payment calculation error:', error);
     }
-  };
+  }, [content, fontSize, duration, couponCode]);
+
+  // Calculate payment when content, fontSize, or duration changes
+  useEffect(() => {
+    if (content.length >= 10) {
+      calculatePayment();
+    }
+  }, [content, fontSize, duration, couponCode, calculatePayment]);
   const [bgColor, setBgColor] = useState('#ffffff');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -451,7 +463,7 @@ export default function PostAdDialog({
                           <span>₹{paymentCalculation.additionalCost?.toLocaleString('en-IN')}</span>
                         </div>
                       )}
-                      {paymentCalculation.fontMultiplier > 1 && (
+                      {paymentCalculation.fontMultiplier > 1 && typeof paymentCalculation.baseAmount === 'number' && (
                         <div className="flex justify-between">
                           <span>Large font (+20%):</span>
                           <span>+₹{Math.round(paymentCalculation.subtotal - paymentCalculation.baseAmount).toLocaleString('en-IN')}</span>
