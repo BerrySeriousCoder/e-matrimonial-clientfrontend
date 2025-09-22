@@ -1,4 +1,3 @@
-'use client';
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -12,60 +11,85 @@ interface LoadingScreenProps {
 export default function LoadingScreen({ 
   onLoadingComplete, 
   duration = 3500,
-  exitAnimation = 'slide-left'
+  exitAnimation = 'fade'
 }: LoadingScreenProps) {
   const [isVisible, setIsVisible] = useState(true);
-  const [isExiting, setIsExiting] = useState(false);
+  const [isHiding, setIsHiding] = useState(false);
   const [textAnimation, setTextAnimation] = useState('animate-in');
   const [imageError, setImageError] = useState(false);
+  const [bgTextureUrl, setBgTextureUrl] = useState<string>('/clean-gray-paper.png');
+  const [assetsReady, setAssetsReady] = useState(false);
 
   useEffect(() => {
+    // Prefer local texture from public/ if available to avoid network cost
+    const candidateTextures = ['/clean-gray-paper.png'];
+    (async () => {
+      for (const path of candidateTextures) {
+        try {
+          // Attempt to load local asset; if it exists, switch background
+          await new Promise<void>((resolve, reject) => {
+            const img = new window.Image();
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error('not found'));
+            img.src = path;
+          });
+          setBgTextureUrl(path);
+          break;
+        } catch {}
+      }
+
+      // Pre-decode main splash image to avoid jank on first paint/exit
+      try {
+        const splash = new window.Image();
+        splash.src = '/emtriloading.png';
+        await (splash.decode ? splash.decode() : Promise.resolve());
+      } catch {}
+      setAssetsReady(true);
+    })();
+
     // Start text animation immediately
     setTextAnimation('animate-in');
 
-    // Start exit animation before the duration ends
-    const exitTimer = setTimeout(() => {
-      setIsExiting(true);
-    }, duration - 2000); // Start exit 2s before duration ends for ultra-smooth transition
-
-    // Complete loading after duration
-    const completeTimer = setTimeout(() => {
-      setIsVisible(false);
-      onLoadingComplete?.();
-    }, duration);
+  // Begin exit once assets are ready; rely on CSS animationend to unmount
+  if (assetsReady && !isHiding) {
+    setIsHiding(true);
+  }
 
     return () => {
-      clearTimeout(exitTimer);
-      clearTimeout(completeTimer);
+    // no timers anymore
     };
-  }, [duration, onLoadingComplete]);
+  }, [duration, onLoadingComplete, assetsReady, isHiding]);
 
   if (!isVisible) return null;
 
   const getExitAnimationClass = () => {
-    if (!isExiting) return '';
+    if (!isHiding) return '';
     switch (exitAnimation) {
-      case 'slide-left': return 'loading-screen-slide-left-exit';
-      case 'slide-right': return 'loading-screen-slide-right-exit';
-      case 'slide-up': return 'loading-screen-slide-up-exit';
-      case 'slide-down': return 'loading-screen-slide-down-exit';
-      case 'fade': return 'loading-screen-fade-exit';
-      default: return 'loading-screen-slide-left-exit';
+      case 'slide-right': return 'ls-exit-slide-right';
+      case 'slide-up': return 'ls-exit-slide-up';
+      case 'slide-down': return 'ls-exit-slide-down';
+      case 'fade': return 'ls-exit-fade';
+      default: return 'ls-exit-slide-left';
     }
   };
 
+  const exitClass = getExitAnimationClass();
+
   return (
     <div 
-      className={`loading-screen-container ${getExitAnimationClass()}`}
+      className={`loading-screen-container ${exitClass}`}
       style={{
         background: 'linear-gradient(135deg, #f5f5e6 0%, #f8f8f5 50%, #f5f5e6 100%)',
-        backgroundImage: 'url("https://www.transparenttextures.com/patterns/clean-gray-paper.png")',
+        backgroundImage: `url("${bgTextureUrl}")`,
         backgroundSize: 'auto',
-        backgroundRepeat: 'repeat'
+        backgroundRepeat: 'repeat',
+        willChange: 'opacity, transform',
+        transform: 'translateZ(0)'
       }}
+      onAnimationEnd={() => { if (isHiding) { setIsVisible(false); onLoadingComplete?.(); } }}
     >
       {/* Background Pattern Overlay */}
-      <div className="absolute inset-0 opacity-30">
+      <div className={`absolute inset-0 opacity-30`}>
         <div 
           className="w-full h-full"
           style={{
@@ -77,16 +101,16 @@ export default function LoadingScreen({
       </div>
 
       {/* Main Content Container */}
-      <div className="relative z-10 flex flex-col items-center justify-center text-center px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+      <div className={`relative z-10 flex flex-col items-center justify-center text-center px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto`}>
         
         {/* Image Container */}
         <div className="mb-8 sm:mb-12 lg:mb-16 relative">
           <div className="relative w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96 mx-auto">
             <Image
-              src="/emtrilodaing.png"
+              src="/emtriloading.png"
               alt="E-Matrimonial Loading"
               fill
-              className="object-contain transition-all duration-1000 ease-out transform scale-100 opacity-100"
+              className="object-contain"
               priority
               onError={(e) => {
                 console.log('Image failed to load:', e);
@@ -124,7 +148,7 @@ export default function LoadingScreen({
         <div className="space-y-4 sm:space-y-6 lg:space-y-8">
           {/* Main Headline */}
           <h1 
-            className="loading-screen-text font-bold text-gray-800 transition-all duration-1000 ease-out transform translate-y-0 opacity-100"
+            className="loading-screen-text font-bold text-gray-800"
             style={{
               fontFamily: 'Georgia, Times New Roman, Times, serif',
               textShadow: '2px 2px 4px rgba(0,0,0,0.1)'
@@ -137,7 +161,7 @@ export default function LoadingScreen({
 
           {/* Subtitle */}
           <p 
-            className="loading-screen-subtitle text-gray-600 transition-all duration-1200 ease-out transform translate-y-0 opacity-100"
+            className="loading-screen-subtitle text-gray-600"
             style={{
               fontFamily: 'Georgia, Times New Roman, Times, serif',
               letterSpacing: '0.5px'
@@ -147,7 +171,7 @@ export default function LoadingScreen({
           </p>
 
           {/* Loading Dots Animation */}
-          <div className="flex justify-center space-x-2 transition-all duration-1400 ease-out transform translate-y-0 opacity-100">
+          <div className="flex justify-center space-x-2">
             {[...Array(3)].map((_, i) => (
               <div
                 key={i}
@@ -163,8 +187,40 @@ export default function LoadingScreen({
 
       </div>
 
-      {/* CSS for floating animation */}
+      {/* CSS for animations */}
       <style jsx>{`
+        .ls-exit-fade { animation: lsFadeOut ${Math.min(1000, duration + 200)}ms cubic-bezier(0.22, 0.44, 0, 1) forwards; }
+        .ls-exit-slide-left { animation: lsSlideLeftOut ${Math.min(1000, duration + 200)}ms cubic-bezier(0.22, 0.44, 0, 1) forwards; }
+        .ls-exit-slide-right { animation: lsSlideRightOut ${Math.min(1000, duration + 200)}ms cubic-bezier(0.22, 0.44, 0, 1) forwards; }
+        .ls-exit-slide-up { animation: lsSlideUpOut ${Math.min(1000, duration + 200)}ms cubic-bezier(0.22, 0.44, 0, 1) forwards; }
+        .ls-exit-slide-down { animation: lsSlideDownOut ${Math.min(1000, duration + 200)}ms cubic-bezier(0.22, 0.44, 0, 1) forwards; }
+
+        /* Force children to ignore their own transitions/animations during exit
+           so the root drives a perfectly synchronized fade */
+        .loading-screen-container.ls-exit-fade *,
+        .loading-screen-container.ls-exit-slide-left *,
+        .loading-screen-container.ls-exit-slide-right *,
+        .loading-screen-container.ls-exit-slide-up *,
+        .loading-screen-container.ls-exit-slide-down * {
+          transition: none !important;
+          animation: none !important;
+          opacity: 1 !important;
+        }
+
+        @keyframes lsFadeOut { to { opacity: 0; } }
+        @keyframes lsSlideLeftOut { to { transform: translate3d(-1.5%,0,0); opacity: 0; } }
+        @keyframes lsSlideRightOut { to { transform: translate3d(1.5%,0,0); opacity: 0; } }
+        @keyframes lsSlideUpOut { to { transform: translate3d(0,-1.5%,0); opacity: 0; } }
+        @keyframes lsSlideDownOut { to { transform: translate3d(0,1.5%,0); opacity: 0; } }
+
+        @media (prefers-reduced-motion: reduce) {
+          .ls-exit-fade,
+          .ls-exit-slide-left,
+          .ls-exit-slide-right,
+          .ls-exit-slide-up,
+          .ls-exit-slide-down { animation-duration: 1ms; }
+        }
+
         @keyframes float {
           0%, 100% {
             transform: translateY(0px) rotate(0deg);

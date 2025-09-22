@@ -180,7 +180,7 @@ export default function EmailDialog({
       <aside
         className={`fixed right-0 top-0 h-full z-50 w-full sm:w-[560px] max-w-[98vw] border-l border-gray-400 transition-transform duration-300 ease-out ${open ? 'translate-x-0' : 'translate-x-full'}`}
         style={{ 
-          backgroundImage: 'url("https://www.transparenttextures.com/patterns/clean-gray-paper.png")',
+          backgroundImage: 'url("/clean-gray-paper.png")',
           backgroundSize: 'auto',
           backgroundRepeat: 'repeat',
           backgroundColor: 'var(--color-newsprint)'

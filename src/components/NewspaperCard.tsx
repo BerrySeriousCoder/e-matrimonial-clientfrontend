@@ -28,7 +28,7 @@ export default function NewspaperCard({
 
   const cardStyle = {
     backgroundColor: bgColor,
-    backgroundImage: 'url("https://www.transparenttextures.com/patterns/clean-gray-paper.png")',
+    backgroundImage: 'url("/clean-gray-paper.png")',
     backgroundBlendMode: 'multiply',
   };
 

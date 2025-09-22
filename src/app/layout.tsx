@@ -7,6 +7,10 @@ import LoadingScreenWrapper from '../components/LoadingScreenWrapper';
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preload" as="image" href="/clean-gray-paper.png" />
+        <link rel="preload" as="image" href="/emtriloading.png" />
+      </head>
       <body>
         <QueryProvider>
           <ToastProvider>

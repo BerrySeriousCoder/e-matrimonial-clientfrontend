@@ -92,7 +92,7 @@ export default function Toast({ id, type, title, message, duration = 4000, onClo
       }`}
       style={{
         backgroundColor: 'var(--color-newsprint)',
-        backgroundImage: 'url("https://www.transparenttextures.com/patterns/clean-gray-paper.png")',
+        backgroundImage: 'url("/clean-gray-paper.png")',
         backgroundRepeat: 'repeat',
         backgroundSize: 'auto',
         borderColor: type === 'success' ? '#059669' : type === 'error' ? '#dc2626' : type === 'warning' ? '#d97706' : '#2563eb'

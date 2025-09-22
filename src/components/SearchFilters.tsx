@@ -120,7 +120,7 @@ export default function SearchFilters({ selectedFilters, onFiltersChange }: Sear
         className={`fixed right-0 top-0 h-full z-50 w-full sm:w-[420px] max-w-[95vw] border-l border-gray-400 transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
         style={{
           backgroundColor: 'var(--color-newsprint)',
-          backgroundImage: 'url("https://www.transparenttextures.com/patterns/clean-gray-paper.png")',
+          backgroundImage: 'url("/clean-gray-paper.png")',
           backgroundRepeat: 'repeat',
           backgroundSize: 'auto'
         }}

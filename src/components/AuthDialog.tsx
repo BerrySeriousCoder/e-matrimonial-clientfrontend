@@ -340,7 +340,7 @@ export default function AuthDialog({ open, onClose, onAuth }: {
           className="w-full max-w-md max-h-[90vh] overflow-hidden border"
           style={{
             backgroundColor: 'var(--color-newsprint)',
-            backgroundImage: 'url("https://www.transparenttextures.com/patterns/clean-gray-paper.png")',
+            backgroundImage: 'url("/clean-gray-paper.png")',
             backgroundRepeat: 'repeat',
             backgroundSize: 'auto',
             borderColor: 'var(--color-ink)'

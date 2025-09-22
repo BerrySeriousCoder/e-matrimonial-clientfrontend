@@ -12,7 +12,7 @@
 
 body {
   background-color: var(--color-newsprint);
-  background-image: url("https://www.transparenttextures.com/patterns/clean-gray-paper.png");
+  background-image: url("/clean-gray-paper.png");
   background-size: auto;
   background-repeat: repeat;
   color: var(--color-ink);
@@ -22,7 +22,7 @@ body {
 
 html {
   background-color: var(--color-newsprint);
-  background-image: url("https://www.transparenttextures.com/patterns/clean-gray-paper.png");
+  background-image: url("/clean-gray-paper.png");
   background-size: auto;
   background-repeat: repeat;
 }
@@ -99,7 +99,7 @@ html {
   padding: 1rem; /* Reduced padding on mobile */
   min-height: 100vh;
   background: var(--color-newsprint);
-  background-image: url("https://www.transparenttextures.com/patterns/clean-gray-paper.png");
+  background-image: url("/clean-gray-paper.png");
   background-size: auto;
   background-repeat: repeat;
 }
@@ -192,7 +192,7 @@ html {
   background-image: 
     linear-gradient(rgba(139, 0, 0, 0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(139, 0, 0, 0.03) 1px, transparent 1px),
-    url("https://www.transparenttextures.com/patterns/clean-gray-paper.png");
+    url("/clean-gray-paper.png");
   background-size: 20px 20px, 20px 20px, auto;
   background-repeat: repeat, repeat, repeat;
   border-bottom: 2px solid #8B0000;
@@ -703,7 +703,7 @@ aside[class*="fixed right-0"] {
 .newspaper-alert {
   position: relative;
   background-color: var(--color-newsprint);
-  background-image: url("https://www.transparenttextures.com/patterns/clean-gray-paper.png");
+  background-image: url("/clean-gray-paper.png");
   background-blend-mode: multiply;
   border: 2px solid var(--color-ink);
   box-shadow: 
