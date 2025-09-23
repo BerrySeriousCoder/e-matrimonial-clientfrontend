@@ -283,11 +283,17 @@ export default function EmailDialog({
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-gray-900">
-                          {texts.message}
-                        </label>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-sm font-bold uppercase tracking-wide text-gray-900">
+                            {texts.message}
+                          </label>
+                          <span className={`text-xs ${message.length >= 1000 ? 'text-red-600' : 'text-gray-600'}`}>
+                            {message.length}/1000
+                          </span>
+                        </div>
                         <textarea 
                           required 
+                          maxLength={1000}
                           value={message} 
                           onChange={e => setMessage(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black min-h-[120px] resize-vertical text-gray-900" 
@@ -337,11 +343,17 @@ export default function EmailDialog({
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-bold mb-2 uppercase tracking-wide text-gray-900">
-                              {texts.message}
-                            </label>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="block text-sm font-bold uppercase tracking-wide text-gray-900">
+                                {texts.message}
+                              </label>
+                              <span className={`text-xs ${message.length >= 1000 ? 'text-red-600' : 'text-gray-600'}`}>
+                                {message.length}/1000
+                              </span>
+                            </div>
                             <textarea 
                               required 
+                              maxLength={1000}
                               value={message} 
                               onChange={e => setMessage(e.target.value)}
                               className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-black min-h-[120px] resize-vertical text-gray-900" 
